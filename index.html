@@ -1827,6 +1827,12 @@ function finalize() {
 function toggleMute() {
   if (!isBuffering) return;
   isMuted = !isMuted;
+  if (isMuted && isDimmed) {
+    // Désactiver dim si on active mute
+    isDimmed = false;
+    dimManual = false;
+    applyDim();
+  }
   if (monitorGain) monitorGain.gain.value = isMuted ? 0 : 1.0;
   const btn = document.getElementById('btnMuteConsole');
   if (btn) isMuted ? btn.classList.add('muted') : btn.classList.remove('muted');
@@ -2358,15 +2364,52 @@ function edDoExport(fname) {
   container.addEventListener('mousedown', (e) => {
     if (!ED.buffer || e.button !== 0) return;
     const rect = container.getBoundingClientRect();
-    dragStart = edXToSec(e.clientX - rect.left, rect.width);
-    dragStart = Math.max(0, Math.min(dragStart, ED.duration));
+    const clickSec = Math.max(0, Math.min(edXToSec(e.clientX - rect.left, rect.width), ED.duration));
+
+    // ── Shift+drag : étendre IN ou OUT ──────────────────────────────────────
+    if (e.shiftKey && ED.inPoint !== null && ED.outPoint !== null) {
+      const i1 = Math.min(ED.inPoint, ED.outPoint);
+      const i2 = Math.max(ED.inPoint, ED.outPoint);
+      // Déterminer quel point modifier selon la position du curseur
+      let editPoint; // 'in' ou 'out'
+      if (clickSec <= i1) {
+        editPoint = 'in';
+      } else if (clickSec >= i2) {
+        editPoint = 'out';
+      } else {
+        // Dans la sélection : point le plus proche
+        editPoint = (clickSec - i1) < (i2 - clickSec) ? 'in' : 'out';
+      }
+
+      const onMove = (ev) => {
+        const x   = ev.clientX - rect.left;
+        const sec = Math.max(0, Math.min(edXToSec(x, rect.width), ED.duration));
+        if (editPoint === 'in') {
+          ED.inPoint = Math.min(sec, ED.outPoint - 0.01);
+        } else {
+          ED.outPoint = Math.max(sec, ED.inPoint + 0.01);
+        }
+        ED.curPos = sec;
+        edUpdateRegion(); edDrawWave();
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      return;
+    }
+
+    // ── Drag normal : créer une sélection ───────────────────────────────────
+    dragStart = clickSec;
     isDragging = false;
 
     const onMove = (ev) => {
       const x   = ev.clientX - rect.left;
       const sec = Math.max(0, Math.min(edXToSec(x, rect.width), ED.duration));
       const d   = Math.abs(sec - dragStart);
-      if (d > 0.05) { // seuil pour différencier click et drag
+      if (d > 0.05) {
         isDragging = true;
         ED.inPoint  = Math.min(dragStart, sec);
         ED.outPoint = Math.max(dragStart, sec);
@@ -2379,15 +2422,11 @@ function edDoExport(fname) {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       if (!isDragging) {
-        // Simple click → déplacer curseur (pas de modif IN/OUT)
         const x   = ev.clientX - rect.left;
         const sec = Math.max(0, Math.min(edXToSec(x, rect.width), ED.duration));
         ED.curPos  = sec;
         if (ED.playing) {
-          const wasPlay = ED.playing;
-          edStop();
-          ED.curPos = sec;
-          edPlayStop();
+          edStop(); ED.curPos = sec; edPlayStop();
         } else {
           edUpdateCursor();
         }
@@ -2512,6 +2551,7 @@ function edZoom(z) {
 // DIM -15dB
 // ══════════════════════════════════════════════════════════════════════════════
 let isDimmed = false;
+let dimManual = false; // true si l'utilisateur a pressé DIM manuellement
 let dimGainNode = null;
 
 function initDimNode() {
@@ -2539,11 +2579,20 @@ function applyDim() {
 
 function toggleDim() {
   isDimmed = !isDimmed;
+  dimManual = isDimmed; // mémoriser l'intention manuelle
+  if (isDimmed && isMuted) {
+    // Désactiver mute si on active dim
+    isMuted = false;
+    if (monitorGain) monitorGain.gain.value = 1.0;
+    const bm = document.getElementById('btnMuteConsole');
+    if (bm) bm.classList.remove('muted');
+  }
   applyDim();
 }
 
 // Auto-dim quand lecteur joue + stream actif non-muted
 function autoDim(play) {
+  if (dimManual) return; // l'utilisateur a pressé DIM manuellement → ne pas toucher
   if (isBuffering && !isMuted) {
     isDimmed = play;
     applyDim();
