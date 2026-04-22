@@ -1,0 +1,2554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>MOG-GE Stream Recorder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/FolexDev/MOG-GE-Recorder/a6adc87ce61164d1dd35a00a4824bc7b7b917d33/One-Lac%20Shade%20Recorder.png"/>
+  <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/FolexDev/MOG-GE-Recorder/a6adc87ce61164d1dd35a00a4824bc7b7b917d33/One-Lac%20Shade%20Recorder.png"/>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="MOG Recorder"/>
+  <meta name="theme-color" content="#141518"/>
+  <script>if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js'));</script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0c0d10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    @keyframes switch-glow {
+      from { box-shadow: 0 0 6px #f5a000, inset 0 1px 0 rgba(255,255,255,0.05); }
+      to   { box-shadow: 0 0 20px #f5a000, inset 0 1px 0 rgba(255,255,255,0.05); }
+    }
+
+    /* ── Shell ── */
+    .shell {
+      width: 100%;
+      max-width: 520px;
+      background: #1a1c22;
+      border: 1px solid #32363f;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px #06070a,
+        0 32px 80px rgba(0,0,0,0.95),
+        inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(180deg, #22252d 0%, #1a1d24 100%);
+      border-bottom: 1px solid #141620;
+      padding: 10px 16px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .header-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+
+    .header-logo {
+      width: 30px; height: 30px; flex-shrink: 0;
+      background: linear-gradient(135deg, #dc0814 50%, #00b4ba 50%);
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center; font-size: 14px;
+    }
+
+    .header-text { min-width: 0; }
+    .header-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px; font-weight: 700;
+      color: #c8cdd8; letter-spacing: 0.14em; text-transform: uppercase;
+    }
+    .header-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #606878; letter-spacing: 0.05em;
+      white-space: normal;
+      line-height: 1.5;
+      padding-left: 40px;
+    }
+
+    .enc-badge {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #00b896; letter-spacing: 0.05em;
+      background: rgba(0,184,150,0.07);
+      border: 1px solid rgba(0,184,150,0.18);
+      padding: 3px 8px; border-radius: 3px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+
+    /* ── Body ── */
+    .body { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Pads antenne ── */
+    .pads { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .pad {
+      height: 50px; border-radius: 6px;
+      border: 1px solid #32363f; background: #20232c;
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase; color: #7880a0;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.08s;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), inset 0 -2px 0 rgba(0,0,0,0.35);
+    }
+    .pad:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+
+    .pad-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.45; flex-shrink: 0; }
+
+    .pad-onefm:hover { border-color: #dc0814; color: #dc0814; }
+    .pad-onefm.pad-on {
+      background: linear-gradient(180deg, #c00610 0%, #8c040c 100%);
+      color: #fff; border-color: #600308;
+      box-shadow: 0 0 20px rgba(200,6,16,0.4), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .pad-onefm.pad-on .pad-dot { opacity: 1; box-shadow: 0 0 6px rgba(255,255,255,0.8); }
+
+    .pad-lac:hover { border-color: #3fcfd5; color: #3fcfd5; }
+    .pad-lac.pad-on {
+      background: linear-gradient(180deg, #2ab8be 0%, #1a7e82 100%);
+      color: #fff; border-color: #104e52;
+      box-shadow: 0 0 20px rgba(42,184,190,0.35), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .pad-lac.pad-on .pad-dot { opacity: 1; }
+
+    .pad-switch {
+      border-color: #f5a000 !important; color: #f5a000 !important;
+      background: #1a1600 !important;
+      animation: switch-glow 0.45s ease infinite alternate;
+    }
+
+    /* ── VU Meter ── */
+    .vu-wrap {
+      background: #12141c;
+      border: 1px solid #22252e;
+      border-radius: 6px;
+      padding: 8px 8px 18px;
+      display: flex; flex-direction: column; gap: 4px;
+      position: relative;
+    }
+
+    .vu-ch {
+      display: flex; align-items: center; gap: 6px; height: 10px;
+    }
+
+    .vu-lbl {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7px; color: #5a6070;
+      width: 8px; flex-shrink: 0; text-align: center;
+    }
+
+    .vu-track {
+      flex: 1; height: 7px;
+      display: flex; gap: 1px; align-items: center;
+    }
+
+    .seg {
+      flex: 1; height: 6px; border-radius: 1px;
+      transition: background 0.04s, box-shadow 0.04s;
+    }
+
+    .seg.g  { background: #1e301e; }
+    .seg.g.lit  { background: #22cc44; box-shadow: 0 0 4px rgba(34,204,68,0.55); }
+    .seg.y  { background: #2c2a10; }
+    .seg.y.lit  { background: #d4cc00; box-shadow: 0 0 4px rgba(212,204,0,0.55); }
+    .seg.o  { background: #2a1e0e; }
+    .seg.o.lit  { background: #ff7700; box-shadow: 0 0 4px rgba(255,119,0,0.55); }
+    .seg.r  { background: #2a1212; }
+    .seg.r.lit  { background: #ff2222; box-shadow: 0 0 5px rgba(255,34,34,0.65); }
+    /* VU muted → gris */
+    .seg.lit.muted { background: #50505a !important; box-shadow: none !important; }
+
+    .vu-ruler {
+      position: absolute;
+      bottom: 4px; left: 22px; right: 6px;
+      display: flex; pointer-events: none;
+    }
+    .vu-tick {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 6px; color: #404656;
+      flex: 1; text-align: center; line-height: 1;
+    }
+    .vu-tick.mj { color: #585e74; }
+
+    /* ── Progress bar ── */
+    .progress { height: 2px; background: #22252e; border-radius: 1px; overflow: hidden; }
+    .progress-bar { height: 100%; width: 0%; border-radius: 1px; transition: width 0.5s linear; background: #00b896; }
+
+    /* ── Timers ── */
+    .timers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .timer {
+      background: #12141c; border: 1px solid #22252e;
+      border-radius: 6px; padding: 8px 12px;
+    }
+    .timer-lbl {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7px; color: #606878; letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .timer-val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 22px; font-weight: 500; color: #404656; margin-top: 2px;
+      letter-spacing: -0.02em;
+    }
+    .timer-val.active { color: #c8cdd8; }
+    .timer-val.rec    { color: #00b896; text-shadow: 0 0 12px rgba(0,184,150,0.4); }
+
+    /* ── Status ── */
+    .status-line {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px; color: #606878; letter-spacing: 0.04em;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #404656; flex-shrink: 0; }
+    .dot.buffering { background: #f5a000; animation: pulse 1.2s infinite; }
+    .dot.ready     { background: #00cc88; box-shadow: 0 0 5px rgba(0,204,136,0.4); }
+    .dot.recording { background: #00b896; animation: pulse 0.8s infinite; box-shadow: 0 0 6px rgba(0,184,150,0.5); }
+    .dot.done      { background: #00cc88; }
+    .dot.error     { background: #ff3333; }
+
+    /* ── Knobs ── */
+    .knobs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .knob-group {
+      background: #16181f; border: 1px solid #22252e;
+      border-radius: 6px; padding: 10px 8px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+    }
+    .knob-lbl {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #8090b0; letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    /* Conteneur SVG seul — ticks dessinés dans le SVG */
+    .knob-wrap { position: relative; width: 116px; height: 116px; }
+    .knob-svg  { width: 116px; height: 116px; display: block; cursor: ns-resize; }
+    .knob-overlay {
+      position: absolute; inset: 0;
+      opacity: 0; font-size: 0;
+      cursor: ns-resize;
+    }
+    .knob-val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; font-weight: 500; color: #00b896;
+      letter-spacing: 0.02em;
+    }
+    /* Popup de sélection custom */
+    .knob-popup {
+      position: fixed;
+      background: #141720;
+      border: 1px solid #2e3240;
+      border-radius: 8px;
+      padding: 5px 0;
+      z-index: 999;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.85), 0 0 0 1px rgba(0,184,150,0.12);
+      min-width: 100px;
+      display: none;
+      backdrop-filter: blur(4px);
+    }
+    .knob-popup.open { display: block; animation: popup-in 0.12s ease; }
+    @keyframes popup-in { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+    .knob-popup-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7px; color: #404860; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 4px 14px 6px;
+      border-bottom: 1px solid #1e2230;
+    }
+    .knob-popup-item {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; color: #6878a0;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.08s, color 0.08s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .knob-popup-item::before {
+      content: '';
+      width: 4px; height: 4px; border-radius: 50%;
+      background: #2e3240; flex-shrink: 0;
+      transition: background 0.08s;
+    }
+    .knob-popup-item:hover { background: rgba(0,184,150,0.07); color: #a0b4cc; }
+    .knob-popup-item:hover::before { background: #4e5870; }
+    .knob-popup-item.selected { color: #00b896; }
+    .knob-popup-item.selected::before { background: #00b896; box-shadow: 0 0 5px rgba(0,184,150,0.5); }
+
+    /* ── Buttons ── */
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .btn {
+      height: 46px; border-radius: 6px;
+      border: 1px solid #32363f; background: #20232c;
+      color: #7880a0;
+      font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.08s;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+    .btn:hover  { color: #a0aacc; border-color: #4a5068; background: #282c38; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn.capture {
+      background: linear-gradient(180deg, var(--cap-hi, #c00610) 0%, var(--cap-lo, #8c040c) 100%);
+      color: #fff; border-color: var(--cap-border, #600308);
+      box-shadow: 0 0 16px var(--cap-glow, rgba(200,6,16,0.3)), inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+    .btn.capture:hover { filter: brightness(1.12); }
+    .btn.capture:disabled {
+      background: #0e0f12; border-color: #252830; color: #363a44;
+      box-shadow: none; filter: none;
+    }
+
+    .btn.mute.active { border-color: #f5a000; color: #f5a000; background: rgba(245,160,0,0.06); }
+
+    /* Bouton Stopper actif */
+    #btnStopCap:not(:disabled) {
+      border-color: #dc0814;
+      color: #dc0814;
+      background: rgba(220,8,20,0.08);
+    }
+    #btnStopCap:not(:disabled):hover {
+      background: rgba(220,8,20,0.15);
+    }
+    .btn kbd {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: inherit;
+      opacity: 0.7;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .btn:disabled kbd { opacity: 0.4; }
+    .btn.full { grid-column: 1 / -1; }
+
+    /* ── Log & Files ── */
+    .log {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #505668; min-height: 12px;
+      letter-spacing: 0.04em; padding: 0 2px;
+    }
+
+    .files { display: flex; flex-direction: column; gap: 5px; }
+    .file-item {
+      background: #12141c; border: 1px solid #22252e;
+      border-radius: 5px; padding: 7px 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .file-name { font-family: 'IBM Plex Mono', monospace; font-size: 8px; color: #7880a0; word-break: break-all; }
+    .file-meta { font-family: 'IBM Plex Mono', monospace; font-size: 7px; color: #505668; margin-top: 2px; }
+    .file-dl   {
+      font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+      color: #00b896; text-decoration: none; flex-shrink: 0;
+      padding: 3px 8px; border: 1px solid rgba(0,184,150,0.25);
+      border-radius: 3px; background: rgba(0,184,150,0.05);
+    }
+
+    /* ── CORS notice ── */
+    .rec-led {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #2a0808;
+      border: 1px solid #1a0404;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .rec-led.active {
+      background: #ff2020;
+      box-shadow: 0 0 6px rgba(255,30,30,0.9), 0 0 14px rgba(255,0,0,0.4);
+      animation: pulse 0.8s ease-in-out infinite;
+    }
+    /* ── Dialog ── */
+    .dialog-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(3px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .dialog-overlay.open { display: flex; animation: popup-in 0.15s ease; }
+    .dialog {
+      background: #1a1c24;
+      border: 1px solid #2e3240;
+      border-radius: 10px;
+      padding: 20px;
+      width: 280px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    }
+    .dialog-icon {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #ff2020;
+      box-shadow: 0 0 8px rgba(255,32,32,0.8);
+      display: inline-block;
+      animation: pulse 0.8s ease-in-out infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .dialog-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px; font-weight: 700;
+      color: #c8cdd8; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .dialog-msg {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px; color: #6878a0;
+      line-height: 1.6; margin-bottom: 16px;
+    }
+    .dialog-btns { display: flex; flex-direction: column; gap: 7px; }
+    .dialog-btn {
+      height: 40px; border-radius: 6px;
+      border: 1px solid #2e3240; background: #20232c;
+      color: #7880a0;
+      font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.08s;
+    }
+    .dialog-btn:hover { background: #282c38; color: #a0aacc; }
+    .dialog-btn.danger { border-color: #600308; background: rgba(200,6,16,0.08); color: #dc0814; }
+    .dialog-btn.danger:hover { background: rgba(200,6,16,0.15); }
+    .dialog-btn.success { border-color: #00b896; background: rgba(0,184,150,0.08); color: #00b896; }
+    .dialog-btn.success:hover { background: rgba(0,184,150,0.15); }
+
+
+    /* ── Audio Editor ── */
+    .editor {
+      background: #0e0f14;
+      border: 1px solid #22252e;
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+    .editor.visible { display: block; }
+
+    .editor-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #6878a0; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 8px 12px 4px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .editor-filename {
+      color: #8090b8; font-size: 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+    }
+
+    /* Waveform */
+    .waveform-container {
+      position: relative;
+      height: 80px;
+      background: #090a0d;
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='24' viewBox='0 0 17 24'%3E%3Crect x='7.5' y='4' width='2' height='16' fill='%23f5a000'/%3E%3Crect x='3' y='4' width='11' height='2' fill='%23f5a000'/%3E%3Crect x='3' y='18' width='11' height='2' fill='%23f5a000'/%3E%3C/svg%3E") 8 12, text;
+      overflow: hidden;
+    }
+    .waveform-container canvas {
+      display: block; width: 100%; height: 100%;
+    }
+    /* Région sélectionnée */
+    .wave-region {
+      position: absolute; top: 0; bottom: 0;
+      background: rgba(0,184,150,0.12);
+      border-left:  1px solid #00b896;
+      border-right: 1px solid #00b896;
+      pointer-events: none;
+      display: none;
+    }
+    /* Curseur de lecture */
+    .wave-cursor {
+      position: absolute; top: 0; bottom: 0;
+      width: 1px; background: #f5a000;
+      pointer-events: none;
+    }
+    /* Marqueurs start/end */
+    .wave-marker {
+      position: absolute; top: 0; bottom: 0;
+      width: 1px; pointer-events: none;
+    }
+    .wave-marker.start { background: #00b896; }
+    .wave-marker.end   { background: #dc0814; }
+    .wave-marker-lbl {
+      position: absolute; top: 3px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 7px;
+      padding: 1px 4px; border-radius: 2px;
+      line-height: 1;
+    }
+    .wave-marker.start .wave-marker-lbl { background: #00b896; color: #000; left: 2px; }
+    .wave-marker.end   .wave-marker-lbl { background: #dc0814; color: #fff; right: 2px; left: auto; }
+
+    /* Scrollbar zoom */
+    .wave-scrollbar {
+      height: 6px; background: #12141c;
+      border-top: 1px solid #1a1c22;
+      position: relative;
+      cursor: pointer;
+    }
+    .wave-scrollbar-thumb {
+      position: absolute; top: 1px; height: 4px;
+      background: #2e3240; border-radius: 2px;
+      cursor: grab;
+      transition: background 0.1s;
+    }
+    .wave-scrollbar-thumb:hover { background: #404860; }
+
+    /* Zoom controls */
+    .wave-zoom {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-top: 1px solid #12141c;
+      border-bottom: 1px solid #12141c;
+    }
+    .wave-zoom-lbl {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7px; color: #404860; letter-spacing: 0.08em;
+    }
+    .wave-zoom-track {
+      flex: 1; height: 3px; background: #1a1c22;
+      border-radius: 2px; cursor: pointer; position: relative;
+    }
+    .wave-zoom-fill {
+      height: 100%; background: #00b896; border-radius: 2px;
+      transition: width 0.1s;
+    }
+    .wave-zoom-val {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 7px; color: #00b896; min-width: 28px; text-align: right;
+    }
+
+    /* Timecode */
+    .wave-timecodes {
+      height: 14px; background: #0a0b0e;
+      position: relative; overflow: hidden;
+    }
+    .wave-timecodes canvas { display: block; width: 100%; height: 100%; }
+
+    /* Transport */
+    .transport {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px;
+      flex-wrap: wrap;
+    }
+    .tr-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; color: #c8cdd8;
+      min-width: 70px; letter-spacing: 0.04em;
+    }
+    /* Boutons transport style console rétro */
+    .tr-btn {
+      height: 34px; min-width: 34px;
+      border-radius: 4px;
+      border: 1px solid #2a2e3a;
+      background: linear-gradient(180deg, #1e2028 0%, #15171e 100%);
+      color: #7888b0;
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+      cursor: pointer; transition: all 0.08s;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 10px; gap: 5px;
+      white-space: nowrap;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04),
+                  inset 0 -2px 0 rgba(0,0,0,0.35),
+                  0 2px 4px rgba(0,0,0,0.3);
+      position: relative; overflow: hidden;
+    }
+    .tr-btn::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 40%;
+      background: rgba(255,255,255,0.025);
+    }
+    .tr-btn:hover  { color: #a0b0cc; border-color: #3a4050; }
+    .tr-btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); }
+    .tr-btn:disabled { opacity: 0.28; cursor: not-allowed; transform: none; }
+    .tr-btn.active {
+      background: linear-gradient(180deg, #0e1a18 0%, #091210 100%);
+      border-color: #00b896; color: #00b896;
+      box-shadow: inset 0 -1px 0 rgba(0,0,0,0.3), 0 0 10px rgba(0,184,150,0.2);
+    }
+    .tr-btn.set-start { border-color: rgba(0,184,150,0.5); color: #00b896; }
+    .tr-btn.set-end   { border-color: rgba(220,8,20,0.5);  color: #dc0814; }
+    .tr-btn.clear-region { border-color: rgba(90,70,100,0.5); color: #907098; font-size: 8px; }
+    .tr-btn.export {
+      border-color: #c07800; color: #f5a000;
+      background: linear-gradient(180deg, #1a1500 0%, #110e00 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), inset 0 -2px 0 rgba(0,0,0,0.35), 0 0 8px rgba(245,160,0,0.1);
+    }
+    .tr-btn.export:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 0 14px rgba(245,160,0,0.25); }
+    .tr-sep { flex: 1; }
+    .tr-region-time {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #505668; letter-spacing: 0.04em;
+    }
+
+    /* DIM button */
+    .dim-btn {
+      width: 44px; height: 100%; min-height: 52px;
+      background: linear-gradient(180deg, #1e2028 0%, #16181e 100%);
+      border: 1px solid #2e3240; border-radius: 5px;
+      cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 5px;
+      padding: 6px 4px; transition: all 0.08s;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04),
+                  inset 0 -2px 0 rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3);
+      position: relative; overflow: hidden;
+    }
+    .dim-btn::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 40%; background: rgba(255,255,255,0.025); border-radius: 4px 4px 0 0;
+    }
+    .dim-btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); }
+    .dim-led {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #1a1a2a; border: 1px solid #0a0a14;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6); flex-shrink: 0; transition: all 0.1s;
+    }
+    .dim-label {
+      font-family: 'IBM Plex Mono', monospace; font-size: 6px; font-weight: 500;
+      color: #7888b0; letter-spacing: 0.08em; text-transform: uppercase;
+      text-align: center; line-height: 1.2; user-select: none;
+    }
+    .dim-btn.dimmed { background: linear-gradient(180deg, #181020 0%, #10081a 100%); border-color: #9060c0; }
+    .dim-btn.dimmed .dim-led {
+      background: #c080ff; border-color: #8040bb;
+      box-shadow: 0 0 8px rgba(192,128,255,0.9), 0 0 16px rgba(160,80,255,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .dim-btn.dimmed .dim-label { color: #c080ff; }
+
+    /* Infobulle raccourcis */
+    .editor-info-btn {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1px solid #2e3240; background: #1a1c24;
+      color: #506070; font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.1s;
+    }
+    .editor-info-btn:hover { color: #00b896; border-color: #00b896; }
+    .shortcuts-popup {
+      position: fixed; z-index: 1000;
+      background: #141720; border: 1px solid #2e3240;
+      border-radius: 8px; padding: 10px 14px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.85);
+      display: none; min-width: 200px;
+    }
+    .shortcuts-popup.open { display: block; animation: popup-in 0.12s ease; }
+    .sc-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 4px 0; border-bottom: 1px solid #1a1c22; gap: 16px;
+    }
+    .sc-row:last-child { border-bottom: none; }
+    .sc-key {
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #00b896;
+      background: rgba(0,184,150,0.1); border: 1px solid rgba(0,184,150,0.25);
+      padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+    }
+    .sc-desc { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #6878a0; }
+
+    /* ── Dialog rename export ── */
+    .rename-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(3px);
+      z-index: 1001;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .rename-overlay.open { display: flex; animation: popup-in 0.12s ease; }
+    .rename-dialog {
+      background: #1a1c24;
+      border: 1px solid #2e3240;
+      border-radius: 10px;
+      padding: 18px;
+      width: 300px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    }
+    .rename-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px; font-weight: 700;
+      color: #c8cdd8; letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .rename-input {
+      width: 100%;
+      background: #0e0f14; border: 1px solid #2e3240;
+      border-radius: 6px; padding: 9px 12px;
+      color: #c8cdd8;
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+      letter-spacing: 0.04em; outline: none;
+      margin-bottom: 4px;
+    }
+    .rename-input:focus { border-color: #00b896; }
+    .rename-ext {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px; color: #404860;
+      margin-bottom: 12px; display: block;
+    }
+    .rename-btns { display: flex; gap: 8px; }
+    .rename-btn {
+      flex: 1; height: 38px; border-radius: 6px;
+      border: 1px solid #2e3240; background: #20232c;
+      color: #7880a0;
+      font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      cursor: pointer; transition: all 0.08s;
+    }
+    .rename-btn:hover { background: #282c38; color: #a0aacc; }
+    .rename-btn.confirm { border-color: #00b896; color: #00b896; background: rgba(0,184,150,0.08); }
+    .rename-btn.confirm:hover { background: rgba(0,184,150,0.15); }
+    .notice {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px; color: #f5a000;
+      background: rgba(245,160,0,0.06);
+      border: 1px solid rgba(245,160,0,0.2);
+      border-radius: 5px; padding: 8px 12px;
+      line-height: 1.5;
+    }
+    .notice code { background: rgba(245,160,0,0.1); padding: 1px 4px; border-radius: 2px; }
+
+    /* ── VU + Mute row ── */
+    .vu-mute-row {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .vu-wrap {
+      flex: 1;
+    }
+
+    /* ── Bouton Mute console ── */
+    .mute-btn-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mute-btn {
+      width: 44px;
+      height: 100%;
+      min-height: 52px;
+      background: linear-gradient(180deg, #1e2028 0%, #16181e 100%);
+      border: 1px solid #2e3240;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 4px;
+      transition: all 0.08s;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.04),
+        inset 0 -2px 0 rgba(0,0,0,0.4),
+        0 2px 6px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .mute-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 40%;
+      background: rgba(255,255,255,0.025);
+      border-radius: 4px 4px 0 0;
+    }
+    .mute-btn:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+    }
+    /* Voyant LED */
+    .mute-led {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #2a0808;
+      border: 1px solid #1a0404;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 0 2px rgba(200,0,0,0.15);
+      flex-shrink: 0;
+      transition: all 0.1s;
+    }
+    .mute-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 6px;
+      font-weight: 500;
+      color: #7888b0;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.2;
+      user-select: none;
+    }
+    /* État actif (muté) */
+    .mute-btn.muted {
+      background: linear-gradient(180deg, #221e10 0%, #181408 100%);
+      border-color: #f5a000;
+    }
+    .mute-btn.muted .mute-led {
+      background: #ff2020;
+      border-color: #aa1010;
+      box-shadow: 0 0 8px rgba(255,30,30,0.9), 0 0 16px rgba(255,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .mute-btn.muted .mute-label {
+      color: #f5a000;
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="header-brand">
+        <div class="header-logo"><img src="https://raw.githubusercontent.com/FolexDev/MOG-GE-Recorder/a6adc87ce61164d1dd35a00a4824bc7b7b917d33/One-Lac%20Shade%20Recorder.png" style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;"/></div>
+        <div class="header-text">
+          <div class="header-title">MOG-GE Recorder</div>
+        </div>
+      </div>
+      <div class="enc-badge" id="encBadge">⏳ LOADING ENC</div>
+    </div>
+    <div class="header-sub" id="headerSub">Sélectionne un flux ci-dessous</div>
+  </div>
+
+  <div class="body">
+
+    <!-- Pads antenne -->
+    <div class="pads">
+      <button class="pad pad-onefm" id="btnOneFM" onclick="selectStream('onefm')">
+        <div class="pad-dot"></div>ONE FM
+      </button>
+      <button class="pad pad-lac" id="btnLac" onclick="selectStream('lac')">
+        <div class="pad-dot"></div>RADIO LAC
+      </button>
+    </div>
+
+    <!-- VU Meter + Mute -->
+    <div class="vu-mute-row">
+      <div class="vu-wrap">
+        <div class="vu-ch">
+          <div class="vu-lbl">L</div>
+          <div class="vu-track" id="vuL"></div>
+        </div>
+        <div class="vu-ch">
+          <div class="vu-lbl">R</div>
+          <div class="vu-track" id="vuR"></div>
+        </div>
+        <div class="vu-ruler" id="vuRuler"></div>
+      </div>
+      <div class="mute-btn-wrap" style="display:flex;gap:6px;">
+        <button class="dim-btn" id="btnDim" onclick="toggleDim()">
+          <div class="dim-led" id="dimLed"></div>
+          <div class="dim-label">DIM<br>−15</div>
+        </button>
+        <button class="mute-btn" id="btnMuteConsole" onclick="toggleMute()">
+          <div class="mute-led" id="muteLed"></div>
+          <div class="mute-label">MUTE</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+    <!-- Timers -->
+    <div class="timers">
+      <div class="timer">
+        <div class="timer-lbl">Buffer Pré-Roll</div>
+        <div class="timer-val" id="prerollDisplay">00:00</div>
+      </div>
+      <div class="timer">
+        <div class="timer-lbl" style="display:flex;align-items:center;gap:5px;">Enregistrement<span class="rec-led" id="recLed"></span></div>
+        <div class="timer-val" id="recDisplay">—:——</div>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-line">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Chargement...</span>
+    </div>
+
+    <!-- Knobs -->
+    <div class="knobs">
+      <div class="knob-group">
+        <div class="knob-lbl">Pré-Roll</div>
+
+        <div class="knob-wrap" id="knobPrerollWrap">
+          <svg viewBox="-8 -8 116 116" class="knob-svg" id="knobPrerollFill_svg">
+  <defs>
+  <radialGradient id="rg_knobPrerollFill" cx="40%" cy="35%" r="65%">
+    <stop offset="0%"   stop-color="#404558"/>
+    <stop offset="55%"  stop-color="#22252e"/>
+    <stop offset="100%" stop-color="#13151b"/>
+  </radialGradient>
+  </defs>
+  <circle cx="50" cy="50" r="30" fill="none" stroke="#2e3240"
+    stroke-width="3" stroke-linecap="round"
+    stroke-dasharray="141.37 47.12"
+    transform="rotate(135.0 50 50)"/>
+  <circle cx="50" cy="50" r="22" fill="url(#rg_knobPrerollFill)" stroke="#0d0e13" stroke-width="1.5"/>
+  <ellipse cx="45" cy="44" rx="7" ry="4" fill="rgba(255,255,255,0.04)"/>
+  <line x1="16.0" y1="50.0" x2="14.0" y2="50.0" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="37.0" y1="18.6" x2="36.2" y2="16.7" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="63.0" y1="18.6" x2="63.8" y2="16.7" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="84.0" y1="50.0" x2="86.0" y2="50.0" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="26.0" y1="74.0" x2="23.1" y2="76.9" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="16.1" y="83.9" text-anchor="end" dy="-0.1em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">20s</text>
+  <line x1="22.1" y1="30.5" x2="18.9" y2="28.2" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="10.7" y="22.5" text-anchor="end" dy="0.9em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">30s</text>
+  <line x1="50.0" y1="16.0" x2="50.0" y2="12.0" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="50.0" y="2.0" text-anchor="middle" dy="0.9em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">60s</text>
+  <line x1="77.9" y1="30.5" x2="81.1" y2="28.2" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="89.3" y="22.5" text-anchor="start" dy="0.9em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">90s</text>
+  <line x1="74.0" y1="74.0" x2="76.9" y2="76.9" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="83.9" y="83.9" text-anchor="start" dy="-0.1em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">120s</text>
+  <line x1="50" y1="38" x2="50" y2="30"
+    stroke="#00b896" stroke-width="2.5" stroke-linecap="round"
+    id="knobPrerollMarker" transform="rotate(0 50 50)"/>
+</svg>
+          <select class="knob-overlay" id="prerollSel" onchange="setPreroll(this.value)">
+            <option value="20">20s</option>
+            <option value="30">30s</option>
+            <option value="60" selected>60s</option>
+            <option value="90">90s</option>
+            <option value="120">120s</option>
+          </select>
+        </div>
+        <div class="knob-val" id="prerollVal">60s</div>
+      </div>
+      <div class="knob-group">
+        <div class="knob-lbl">Durée Rec (Max 10min)</div>
+
+        <div class="knob-wrap" id="knobDurWrap">
+          <svg viewBox="-8 -8 116 116" class="knob-svg" id="knobDurFill_svg">
+  <defs>
+  <radialGradient id="rg_knobDurFill" cx="40%" cy="35%" r="65%">
+    <stop offset="0%"   stop-color="#404558"/>
+    <stop offset="55%"  stop-color="#22252e"/>
+    <stop offset="100%" stop-color="#13151b"/>
+  </radialGradient>
+  </defs>
+  <circle cx="50" cy="50" r="30" fill="none" stroke="#2e3240"
+    stroke-width="3" stroke-linecap="round"
+    stroke-dasharray="141.37 47.12"
+    transform="rotate(-90 50 50)"/>
+  <circle cx="50" cy="50" r="22" fill="url(#rg_knobDurFill)" stroke="#0d0e13" stroke-width="1.5"/>
+  <ellipse cx="45" cy="44" rx="7" ry="4" fill="rgba(255,255,255,0.04)"/>
+  <line x1="74.0" y1="26.0" x2="75.5" y2="24.5" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="74.0" y1="74.0" x2="75.5" y2="75.5" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="26.0" y1="74.0" x2="24.5" y2="75.5" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="26.0" y1="26.0" x2="24.5" y2="24.5" stroke="#3a3e50" stroke-width="1" stroke-linecap="round"/>
+  <line x1="16.0" y1="50.0" x2="12.0" y2="50.0" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="9" y="50" text-anchor="end" dy="0.35em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">3min</text>
+  <line x1="50.0" y1="16.0" x2="50.0" y2="12.0" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="50" y="6" text-anchor="middle" dy="0em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">Manuel</text>
+  <line x1="84.0" y1="50.0" x2="88.0" y2="50.0" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="91" y="50" text-anchor="start" dy="0.35em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">1min</text>
+  <line x1="50.0" y1="84.0" x2="50.0" y2="88.0" stroke="#506080" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="50" y="96" text-anchor="middle" dy="0em" font-family="IBM Plex Mono,monospace" font-size="6.5" fill="#6878a8">2min</text>
+  <line x1="50" y1="38" x2="50" y2="30"
+    stroke="#00b896" stroke-width="2.5" stroke-linecap="round"
+    id="knobDurMarker" transform="rotate(0 50 50)"/>
+</svg>
+          <select class="knob-overlay" id="durSel" onchange="setDur(this.value)">
+            <option value="0" selected>Manuel</option>
+            <option value="60">1 min</option>
+            <option value="120">2 min</option>
+            <option value="180">3 min</option>
+          </select>
+        </div>
+        <div class="knob-val" id="durVal">Manuel</div>
+      </div>
+    </div>
+
+    <!-- filePrefix géré en JS uniquement -->
+    <input type="hidden" id="filePrefix" value="onefm-capture"/>
+
+    <!-- Boutons action -->
+    <div class="actions">
+      <button class="btn capture" id="btnTrigger" onclick="triggerCapture()" disabled>⏺ Capturer <kbd>Ctrl+Space</kbd></button>
+      <button class="btn"         id="btnStopCap" onclick="stopCapture()"    disabled>⏹ Stopper <kbd>Ctrl+Space</kbd></button>
+      <button class="btn full"    id="btnStop"    onclick="doStop()"  style="display:none">⏹ Arrêter le stream</button>
+      <!-- btnMute remplacé par bouton console dans le VU mètre -->
+    </div>
+
+    <!-- Log -->
+    <div class="log" id="logLine"></div>
+
+    <!-- CORS notice -->
+    <div class="notice" id="corsNotice" style="display:none">
+      ⚠ Erreur CORS — ouvre ce fichier via GitHub Pages ou un serveur local.<br>
+      En local : <code>npx serve .</code> ou <code>python3 -m http.server</code>
+    </div>
+
+    <!-- Éditeur audio -->
+    <div class="editor" id="audioEditor">
+      <div class="editor-title">
+        <span>ÉDITEUR</span>
+        <span class="editor-filename" id="editorFilename">—</span>
+        <button class="editor-info-btn" id="edInfoBtn" onclick="toggleShortcuts(event)" title="Raccourcis">i</button>
+      </div>
+      <!-- Popup raccourcis -->
+      <div class="shortcuts-popup" id="shortcutsPopup">
+        <div class="sc-row"><span class="sc-key">Espace</span><span class="sc-desc">Play / Stop</span></div>
+        <div class="sc-row"><span class="sc-key">D</span><span class="sc-desc">Retour au début</span></div>
+        <div class="sc-row"><span class="sc-key">I</span><span class="sc-desc">Set IN</span></div>
+        <div class="sc-row"><span class="sc-key">O</span><span class="sc-desc">Set OUT</span></div>
+        <div class="sc-row"><span class="sc-key">X</span><span class="sc-desc">Effacer IN / OUT</span></div>
+        <div class="sc-row"><span class="sc-key">T</span><span class="sc-desc">Zoom +</span></div>
+        <div class="sc-row"><span class="sc-key">R</span><span class="sc-desc">Zoom −</span></div>
+        <div class="sc-row"><span class="sc-key">E</span><span class="sc-desc">Exporter sélection</span></div>
+        <div class="sc-row"><span class="sc-key">Ctrl+Space</span><span class="sc-desc">Capturer stream</span></div>
+      </div>
+      <div class="wave-timecodes"><canvas id="waveTimecode"></canvas></div>
+      <div class="waveform-container" id="waveContainer">
+        <canvas id="waveEditor"></canvas>
+        <div class="wave-region" id="waveRegion"></div>
+        <div class="wave-cursor" id="waveCursor" style="left:0"></div>
+        <div class="wave-marker start" id="waveMarkerStart" style="display:none">
+          <span class="wave-marker-lbl">IN</span>
+        </div>
+        <div class="wave-marker end" id="waveMarkerEnd" style="display:none">
+          <span class="wave-marker-lbl">OUT</span>
+        </div>
+      </div>
+      <div class="wave-scrollbar" id="waveScrollbar">
+        <div class="wave-scrollbar-thumb" id="waveScrollThumb"></div>
+      </div>
+      <div class="wave-zoom">
+        <span class="wave-zoom-lbl">ZOOM</span>
+        <div class="wave-zoom-track" id="waveZoomTrack">
+          <div class="wave-zoom-fill" id="waveZoomFill" style="width:0%"></div>
+        </div>
+        <span class="wave-zoom-val" id="waveZoomVal">1×</span>
+      </div>
+      <div class="transport">
+        <span class="tr-time" id="trTime">00:00.0</span>
+        <button class="tr-btn" id="trRewind"  onclick="edRewind()" title="Début">⏮</button>
+        <button class="tr-btn" id="trPlay"    onclick="edPlayStop()" title="Play/Stop">▶</button>
+        <div class="tr-sep"></div>
+        <button class="tr-btn set-start" onclick="edSetStart()" title="Set IN [I]">IN</button>
+        <button class="tr-btn set-end"   onclick="edSetEnd()"   title="Set OUT [O]">OUT</button>
+        <button class="tr-btn clear-region" onclick="edClearRegion()" title="Effacer IN/OUT [X]">✕</button>
+        <button class="tr-btn export"    onclick="edExport()" id="trExport" title="Exporter la sélection [E]" disabled>↓ Export</button>
+        <span class="tr-region-time" id="trRegionTime"></span>
+      </div>
+    </div>
+
+    <!-- Fichiers -->
+    <div class="files" id="filesList"></div>
+
+  </div>
+</div>
+
+<!-- Dialog renommage export -->
+<div class="rename-overlay" id="renameDialog">
+  <div class="rename-dialog">
+    <div class="rename-title">Nommer le fichier</div>
+    <input class="rename-input" id="renameInput" type="text" placeholder="nom du fichier"/>
+    <span class="rename-ext">.mp3</span>
+    <div class="rename-btns">
+      <button class="rename-btn" onclick="renameCancel()">Annuler</button>
+      <button class="rename-btn confirm" onclick="renameConfirm()">Exporter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Dialog arrêt stream -->
+<div class="dialog-overlay" id="stopDialog">
+  <div class="dialog">
+    <div class="dialog-title"><span class="dialog-icon"></span>Enregistrement en cours</div>
+    <div class="dialog-msg">Un enregistrement est actif.<br>Que veux-tu faire&nbsp;?</div>
+    <div class="dialog-btns">
+      <button class="dialog-btn success" onclick="dialogAction('save')">⏹ Arrêter et enregistrer</button>
+      <button class="dialog-btn danger"  onclick="dialogAction('discard')">⏹ Arrêter le stream</button>
+      <button class="dialog-btn"         onclick="dialogAction('cancel')">↩ Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Popups potards -->
+<div class="knob-popup" id="popupPreroll">
+  <div class="knob-popup-title">Pré-Roll</div>
+  <div class="knob-popup-item" data-val="20">20s</div>
+  <div class="knob-popup-item" data-val="30">30s</div>
+  <div class="knob-popup-item selected" data-val="60">60s</div>
+  <div class="knob-popup-item" data-val="90">90s</div>
+  <div class="knob-popup-item" data-val="120">120s</div>
+</div>
+<div class="knob-popup" id="popupDur">
+  <div class="knob-popup-title">Durée Rec (Max 10min)</div>
+  <div class="knob-popup-item selected" data-val="0">Manuel</div>
+  <div class="knob-popup-item" data-val="60">1 min</div>
+  <div class="knob-popup-item" data-val="120">2 min</div>
+  <div class="knob-popup-item" data-val="180">3 min</div>
+</div>
+
+<script>
+// Chargement dynamique de lamejs avec fallback
+(function loadLame() {
+  const urls = [
+    'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js',
+    'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js',
+  ];
+  let idx = 0;
+  function tryLoad() {
+    if (idx >= urls.length) {
+      document.getElementById('encBadge').textContent = '✗ Encodeur indisponible';
+      document.getElementById('encBadge').style.color = '#ff4444';
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = urls[idx++];
+    s.onload  = () => { /* checkLame sera appelé après */ };
+    s.onerror = () => { tryLoad(); };
+    document.head.appendChild(s);
+  }
+  tryLoad();
+})();
+</script>
+<script>
+
+// ── VU Meter ──────────────────────────────────────────────────────────────────
+// 38 segments : 22 green (-45→-12dB) + 9 yellow (-12→-3dB) + 2 orange (-3→-1dB) + 5 red (-1→clip)
+const SEG_MAP = [
+  ...Array(22).fill('g'),
+  ...Array(9).fill('y'),
+  ...Array(2).fill('o'),
+  ...Array(5).fill('r'),
+];
+
+const RULER_DEFS = ['-45','','-39','','-33','','-27','','-24','','-21','','-18','','-15','','-12','','-9','','-6','','-3','','','','0','','',''];
+
+(function buildVU() {
+  ['vuL','vuR'].forEach(id => {
+    const bar = document.getElementById(id);
+    SEG_MAP.forEach(cls => {
+      const s = document.createElement('div');
+      s.className = 'seg ' + cls;
+      bar.appendChild(s);
+    });
+  });
+  const ruler = document.getElementById('vuRuler');
+  RULER_DEFS.forEach(lbl => {
+    const t = document.createElement('div');
+    t.className = 'vu-tick' + (lbl !== '' ? ' mj' : '');
+    t.textContent = lbl;
+    ruler.appendChild(t);
+  });
+})();
+
+let peakL = 0, peakR = 0, vuRafId = null;
+
+function rmsToSeg(rms) {
+  if (rms < 0.00001) return 0;
+  const db = 20 * Math.log10(rms);
+  return Math.round(((Math.max(-45, Math.min(2, db)) + 45) / 47) * 38);
+}
+
+function paintVU(rL, rR) {
+  [['vuL', rmsToSeg(rL)], ['vuR', rmsToSeg(rR)]].forEach(([id, n]) => {
+    const segs = document.getElementById(id).children;
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
+      // Toujours effacer les styles inline (résidu dim)
+      seg.style.background = '';
+      seg.style.boxShadow  = '';
+      if (i < n) {
+        seg.classList.add('lit');
+        if (isMuted) {
+          seg.classList.add('muted');
+        } else {
+          seg.classList.remove('muted');
+          if (isDimmed) {
+            // Orange dim via style inline (pas de classe pour éviter !important)
+            seg.style.background = '#c080ff';
+            seg.style.boxShadow  = '0 0 4px rgba(192,128,255,0.55)';
+          }
+        }
+      } else {
+        seg.classList.remove('lit');
+        seg.classList.remove('muted');
+      }
+    }
+  });
+}
+
+function vuLoop() {
+  vuRafId = requestAnimationFrame(vuLoop);
+  peakL *= 0.88; peakR *= 0.88;
+  paintVU(peakL, peakR);
+}
+
+function startVU() { if (!vuRafId) vuLoop(); }
+function stopVU()  { if (vuRafId) { cancelAnimationFrame(vuRafId); vuRafId = null; } paintVU(0, 0); }
+
+// ── Knobs ─────────────────────────────────────────────────────────────────────
+const CIRC = 2 * Math.PI * 21; // ~131.95
+
+const PR_OPTS  = [20, 30, 60, 90, 120];
+const DUR_OPTS = [0, 60, 120, 180];
+const DUR_LBL  = { '0':'Manuel', '60':'1 min', '120':'2 min', '180':'3 min' };
+
+const CX = 50, CY = 50;
+const CIRC_RING = 188.5; // 2π × 30
+
+// Pré-roll : 0°=12h, CW+ (20s=225°,30s=315°,60s=0°,90s=45°,120s=135°)
+const PR_ANGLES  = [225, 305, 0, 55, 135]; // [20s,30s,60s,90s,120s]
+const DUR_ANGLES = [0, 90, 180, 270];            // [Manuel,1min,2min,3min]
+
+function knobSetPR(idx) {
+  const a = PR_ANGLES[Math.max(0, Math.min(PR_ANGLES.length-1, idx))];
+  const m = document.getElementById('knobPrerollMarker');
+  if (m) m.setAttribute('transform', `rotate(${a} ${CX} ${CY})`);
+}
+function knobSetDUR(idx) {
+  const a = DUR_ANGLES[Math.max(0, Math.min(DUR_ANGLES.length-1, idx))];
+  const m = document.getElementById('knobDurMarker');
+  if (m) m.setAttribute('transform', `rotate(${a} ${CX} ${CY})`);
+}
+knobSetPR(2);
+knobSetDUR(0);
+
+// ── Knob interaction : drag vertical + double-clic popup ────────────────────
+(function initKnobInteraction() {
+  const CONFIGS = [
+    { wrapId:'knobPrerollWrap', selId:'prerollSel', opts:[20,30,60,90,120], popupId:'popupPreroll', setFn: (i) => { setPreroll(String([20,30,60,90,120][i])); } },
+    { wrapId:'knobDurWrap',     selId:'durSel',     opts:[0,60,120,180],       popupId:'popupDur',     setFn: (i) => { setDur(String([0,60,120,180][i])); } },
+  ];
+
+  CONFIGS.forEach(({ wrapId, selId, opts, popupId, setFn }) => {
+    const wrap = document.getElementById(wrapId);
+    const sel  = document.getElementById(selId);
+    if (!wrap || !sel) return;
+
+    const STEP_PX = 30;
+    let startY = null, startIdx = null;
+
+    function curIdx() { return Math.max(0, opts.indexOf(parseInt(sel.value))); }
+
+    // Drag souris — attaché sur le SVG pour capter les events
+    wrap.addEventListener('mousedown', startDrag, true);
+
+    function startDrag(e) {
+      if (e.button !== 0) return;
+      if (e.detail >= 2) return; // laisse dblclick
+      e.preventDefault();
+      e.stopPropagation();
+      startY   = e.clientY;
+      startIdx = curIdx();
+
+      function onMove(e) {
+        const dy   = e.clientY - startY;
+        const step = Math.round(-dy / STEP_PX);
+        const ni   = Math.max(0, Math.min(opts.length-1, startIdx + step));
+        if (ni !== curIdx()) {
+          sel.value = String(opts[ni]);
+          setFn(ni);
+        }
+      }
+      function onUp() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    // Touch
+    let _lastTap = 0;
+    wrap.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        startY   = e.touches[0].clientY;
+        startIdx = curIdx();
+      }
+      e.preventDefault();
+    }, { passive: false });
+    wrap.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const dy   = e.touches[0].clientY - startY;
+      const step = Math.round(-dy / STEP_PX);
+      const ni   = Math.max(0, Math.min(opts.length-1, startIdx + step));
+      if (ni !== curIdx()) { sel.value = String(opts[ni]); setFn(ni); }
+    }, { passive: false });
+    wrap.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - _lastTap < 350) {
+        // Double-tap → ouvrir popup
+        e.preventDefault();
+        const popup = document.getElementById(popupId);
+        if (!popup) return;
+        const rect = wrap.getBoundingClientRect();
+        popup.style.left = rect.left + 'px';
+        popup.style.top  = (rect.bottom + window.scrollY + 8) + 'px';
+        popup.querySelectorAll('.knob-popup-item').forEach(item => {
+          item.classList.toggle('selected', item.dataset.val === sel.value);
+        });
+        popup.classList.add('open');
+        function onItem(ev) {
+          const val = ev.currentTarget.dataset.val;
+          sel.value = val;
+          const ni = opts.indexOf(parseInt(val));
+          if (ni >= 0) setFn(ni);
+          popup.querySelectorAll('.knob-popup-item').forEach(i => i.classList.toggle('selected', i.dataset.val === val));
+          closePopup();
+        }
+        popup.querySelectorAll('.knob-popup-item').forEach(item => item.addEventListener('click', onItem, { once: true }));
+        function closePopup() { popup.classList.remove('open'); document.removeEventListener('touchstart', outside); }
+        function outside(ev) { if (!popup.contains(ev.target) && !wrap.contains(ev.target)) closePopup(); }
+        setTimeout(() => document.addEventListener('touchstart', outside, { passive: true }), 80);
+      }
+      _lastTap = now;
+    }, { passive: false });
+
+    // Double-clic → popup stylée
+    wrap.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const popup = document.getElementById(popupId);
+      if (!popup) return;
+      const rect = wrap.getBoundingClientRect();
+      popup.style.left = (rect.left + window.scrollX) + 'px';
+      popup.style.top  = (rect.bottom + window.scrollY + 8) + 'px';
+      popup.querySelectorAll('.knob-popup-item').forEach(item => {
+        item.classList.toggle('selected', item.dataset.val === sel.value);
+      });
+      popup.classList.add('open');
+
+      function onItem(ev) {
+        const val = ev.currentTarget.dataset.val;
+        sel.value = val;
+        const ni = opts.indexOf(parseInt(val));
+        if (ni >= 0) setFn(ni);
+        popup.querySelectorAll('.knob-popup-item').forEach(i => i.classList.toggle('selected', i.dataset.val === val));
+        closePopup();
+      }
+      popup.querySelectorAll('.knob-popup-item').forEach(item => {
+        item.addEventListener('click', onItem, { once: true });
+      });
+      function closePopup() {
+        popup.classList.remove('open');
+        document.removeEventListener('click', outside);
+      }
+      function outside(ev) {
+        if (!popup.contains(ev.target) && !wrap.contains(ev.target)) closePopup();
+      }
+      setTimeout(() => document.addEventListener('click', outside), 80);
+    });
+
+    // Cursor
+    wrap.style.cursor = 'ns-resize';
+    if (sel) Object.assign(sel.style, { position:'absolute', inset:'0', opacity:'0', fontSize:'0', pointerEvents:'none' });
+  });
+})();
+
+// ── Engine vars ───────────────────────────────────────────────────────────────
+const STREAMS = {
+  onefm: {
+    url: 'https://onefm.ice.infomaniak.ch/onefm-high.mp3',
+    prefix: 'onefm-capture',
+    sub: 'onefm-high.mp3 · pre-roll 60s · sauvegarde locale'
+  },
+  lac: {
+    url: 'https://radiolac.ice.infomaniak.ch/radiolac-high.mp3',
+    prefix: 'radiolac-capture',
+    sub: 'radiolac-high.mp3 · pre-roll 60s · sauvegarde locale'
+  }
+};
+
+const SAMPLE_RATE = 44100, BITRATE = 192, CHANNELS = 2, BUFFER_SIZE = 4096;
+
+let PRE_ROLL      = 60;
+let postTarget    = 0;
+let MAX_RING_DYN  = Math.ceil((SAMPLE_RATE * (PRE_ROLL + 5)) / BUFFER_SIZE);
+
+let currentStream = null, pendingSwitch = null, switchTmt = null;
+let isBuffering = false, isCapturing = false, isMuted = false;
+let lameReady = false;
+
+let audioCtx, analyser, dataArray, monitorGain, scriptProcessor, audioEl, srcNode, streamAbort;
+let ringPCM = [], capturePCM = [], captureSnapshot = [];
+let prerollSec = 0, recSec = 0, snapshotSec = 0;
+let prerollInterval = null, recInterval = null;
+
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const IS_IOS_SA = IS_IOS && window.navigator.standalone === true;
+
+// ── Knob handlers ─────────────────────────────────────────────────────────────
+function setPreroll(val) {
+  PRE_ROLL = parseInt(val);
+  MAX_RING_DYN = Math.ceil((SAMPLE_RATE * (PRE_ROLL + 5)) / BUFFER_SIZE);
+  knobSetPR(PR_OPTS.indexOf(PRE_ROLL));
+  document.getElementById('prerollVal').textContent = val + 's';
+  if (currentStream) document.getElementById('headerSub').textContent = currentStream.sub.replace(/pre-roll \d+s/, 'pre-roll ' + PRE_ROLL + 's');
+  log('Pré-roll → ' + PRE_ROLL + 's');
+
+  if (!isBuffering) return;
+
+  // Recalibrer prerollSec à la nouvelle durée (si on baisse, on clamp)
+  prerollSec = Math.min(prerollSec, PRE_ROLL);
+
+  if (prerollSec < PRE_ROLL) {
+    // Buffer insuffisant pour la nouvelle durée → afficher la progression
+    // mais laisser Capturer disponible (l'audio s'accumule de toute façon)
+    document.getElementById('prerollDisplay').textContent = fmt(prerollSec);
+    document.getElementById('prerollDisplay').className = 'timer-val active';
+    if (!isCapturing) document.getElementById('progressBar').style.width = (prerollSec / PRE_ROLL * 100) + '%';
+    setStatus('buffering', 'Pré-roll — ' + prerollSec + 's / ' + PRE_ROLL + 's');
+    // Capturer reste cliquable
+    if (!isCapturing) setCapButtons(true, false);
+
+    // Redémarrer le prerollInterval si arrêté
+    if (!prerollInterval) {
+      prerollInterval = setInterval(() => {
+        prerollSec = Math.min(prerollSec + 1, PRE_ROLL);
+        document.getElementById('prerollDisplay').textContent = fmt(prerollSec);
+        if (!isCapturing) document.getElementById('progressBar').style.width = (prerollSec / PRE_ROLL * 100) + '%';
+        if (prerollSec >= PRE_ROLL) {
+          setStatus('ready', 'Pré-roll prêt (' + PRE_ROLL + 's) — prêt à capturer');
+          document.getElementById('prerollDisplay').className = 'timer-val rec';
+          clearInterval(prerollInterval); prerollInterval = null;
+        }
+      }, 1000);
+    }
+  } else {
+    // Buffer déjà suffisant → affichage immédiat
+    prerollSec = PRE_ROLL;
+    document.getElementById('prerollDisplay').textContent = fmt(PRE_ROLL);
+    document.getElementById('prerollDisplay').className = 'timer-val rec';
+    document.getElementById('progressBar').style.width = '100%';
+    setStatus('ready', 'Pré-roll prêt (' + PRE_ROLL + 's) — prêt à capturer');
+    if (!isCapturing) setCapButtons(true, false);
+  }
+}
+
+const MAX_AUTO_STOP = 600; // 10 min hardcodé — s'applique toujours en plus de postTarget
+
+function setDur(val) {
+  postTarget = parseInt(val);
+  knobSetDUR(DUR_OPTS.indexOf(postTarget));
+  document.getElementById('durVal').textContent = DUR_LBL[val];
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────────
+function fmt(s) { return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
+
+function setStatus(cls, txt) {
+  document.getElementById('statusDot').className  = 'dot' + (cls ? ' ' + cls : '');
+  document.getElementById('statusText').textContent = txt;
+}
+
+function log(t) { document.getElementById('logLine').textContent = t; }
+
+function showStreamControls(show) {
+  document.getElementById('btnStop').style.display = show ? 'flex' : 'none';
+  // btnMute est maintenant le bouton console dans le VU mètre (toujours visible)
+}
+
+function setCapButtons(capEn, stopEn) {
+  document.getElementById('btnTrigger').disabled = !capEn;
+  document.getElementById('btnStopCap').disabled = !stopEn;
+}
+
+// ── Pad / switch ───────────────────────────────────────────────────────────────
+function updatePads(key) {
+  document.getElementById('btnOneFM').classList.toggle('pad-on', key === 'onefm');
+  document.getElementById('btnLac').classList.toggle('pad-on', key === 'lac');
+}
+
+function resetPadLabels() {
+  const of = document.getElementById('btnOneFM');
+  const lc = document.getElementById('btnLac');
+  of.innerHTML = '<div class="pad-dot"></div>ONE FM';
+  lc.innerHTML = '<div class="pad-dot"></div>RADIO LAC';
+  of.classList.remove('pad-switch');
+  lc.classList.remove('pad-switch');
+  if (currentStream) updatePads(Object.keys(STREAMS).find(k => STREAMS[k] === currentStream) || '');
+}
+
+function cancelSwitch() {
+  if (switchTmt) { clearTimeout(switchTmt); switchTmt = null; }
+  pendingSwitch = null;
+  resetPadLabels();
+}
+
+function applyStream(key) {
+  cancelSwitch();
+  currentStream = STREAMS[key];
+  updatePads(key);
+  document.getElementById('headerSub').textContent = currentStream.sub.replace(/pre-roll \d+s/, 'pre-roll ' + PRE_ROLL + 's');
+  document.getElementById('filePrefix').value = currentStream.prefix;
+  // Couleur du bouton Capturer = couleur du stream
+  const r = document.documentElement.style;
+  if (key === 'onefm') {
+    r.setProperty('--cap-hi',     '#c00610');
+    r.setProperty('--cap-lo',     '#8c040c');
+    r.setProperty('--cap-border', '#600308');
+    r.setProperty('--cap-glow',   'rgba(200,6,16,0.3)');
+  } else {
+    r.setProperty('--cap-hi',     '#2ab8be');
+    r.setProperty('--cap-lo',     '#1a7e82');
+    r.setProperty('--cap-border', '#104e52');
+    r.setProperty('--cap-glow',   'rgba(42,184,190,0.3)');
+  }
+  if (lameReady) startStream();
+}
+
+function selectStream(key) {
+  if (!isBuffering) { applyStream(key); return; }
+  const curKey = Object.keys(STREAMS).find(k => STREAMS[k] === currentStream);
+  if (key === curKey) return;
+  if (pendingSwitch !== key) {
+    cancelSwitch();
+    pendingSwitch = key;
+    const btn = document.getElementById(key === 'onefm' ? 'btnOneFM' : 'btnLac');
+    btn.innerHTML = '<div class="pad-dot"></div>Switch ?';
+    btn.classList.add('pad-switch');
+    switchTmt = setTimeout(cancelSwitch, 3000);
+    return;
+  }
+  teardown();
+  applyStream(key);
+}
+
+// ── Lame ───────────────────────────────────────────────────────────────────────
+let _lameCheckCount = 0;
+function checkLame() {
+  _lameCheckCount++;
+  if (typeof lamejs !== 'undefined') {
+    lameReady = true;
+    document.getElementById('encBadge').textContent = '✓ MP3 · 44.1kHz · Stéréo · 192kbps';
+    setStatus('', 'Sélectionne un flux pour démarrer');
+    log('Encodeur prêt');
+  } else if (_lameCheckCount < 50) {
+    setTimeout(checkLame, 300);
+  } else {
+    // Après 15s : afficher erreur et proposer reload
+    document.getElementById('encBadge').textContent = '✗ Reload requis';
+    document.getElementById('encBadge').style.color = '#ff4444';
+    document.getElementById('encBadge').style.cursor = 'pointer';
+    document.getElementById('encBadge').onclick = () => location.reload();
+    setStatus('error', 'Encodeur non chargé — vérifie ta connexion et recharge');
+  }
+}
+setTimeout(checkLame, 300);
+
+// ── Audio worklet ─────────────────────────────────────────────────────────────
+const WORKLET_CODE = `class PCMCapture extends AudioWorkletProcessor{constructor(){super();this._buf=[[],[]];this._size=0;this._MAX=4096;}process(inputs){const inp=inputs[0];if(!inp||!inp[0])return true;const L=inp[0],R=inp[1]||inp[0];this._buf[0].push(new Float32Array(L));this._buf[1].push(new Float32Array(R));this._size+=L.length;if(this._size>=this._MAX){const flat=(ch)=>{const out=new Float32Array(this._size);let off=0;for(const b of this._buf[ch]){out.set(b,off);off+=b.length;}return out;};this.port.postMessage({L:flat(0),R:flat(1)},[flat(0).buffer,flat(1).buffer]);this._buf=[[],[]];this._size=0;}return true;}}registerProcessor('pcm-capture',PCMCapture);`;
+
+// ── Float32 → Int16 dithering TPDF + noise shaping ────────────────────────────
+function f32ToI16(f32) {
+  const out = new Int16Array(f32.length); let e = 0;
+  for (let i = 0; i < f32.length; i++) {
+    let s = f32[i]; if (s > 1) s = 1; if (s < -1) s = -1;
+    const d = (Math.random() - 0.5) * 0.3 + (Math.random() - 0.5) * 0.3;
+    let v = Math.round(s * 32767 + d + e * 0.5);
+    if (v > 32767) v = 32767; if (v < -32768) v = -32768;
+    e = s * 32767 - v; out[i] = v;
+  }
+  return out;
+}
+
+// ── iOS fetch stream ──────────────────────────────────────────────────────────
+async function fetchAndStream(url, ctx, sp, sig) {
+  const resp = await fetch(url, { signal: sig });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const reader = resp.body.getReader();
+  let buf = new Uint8Array(0);
+  const CHUNK = 128 * 1024;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done || sig.aborted) break;
+    const m = new Uint8Array(buf.length + value.length);
+    m.set(buf); m.set(value, buf.length); buf = m;
+    while (buf.length >= CHUNK) {
+      const sl = buf.slice(0, CHUNK).buffer.slice(0); buf = buf.slice(CHUNK);
+      try { const d = await ctx.decodeAudioData(sl); const s = ctx.createBufferSource(); s.buffer = d; s.connect(sp); s.start(); } catch(e) {}
+    }
+  }
+}
+
+// ── RMS ───────────────────────────────────────────────────────────────────────
+function rms(f32) { let s = 0; for (let i = 0; i < f32.length; i++) s += f32[i] * f32[i]; return Math.sqrt(s / f32.length); }
+
+// ── onChunk ───────────────────────────────────────────────────────────────────
+const MAX_CAP_CHUNKS = Math.ceil((SAMPLE_RATE * 1800) / BUFFER_SIZE); // 30 min max
+
+const onChunk = (L, R) => {
+  const c = { L: new Float32Array(L), R: new Float32Array(R) };
+  ringPCM.push(c); if (ringPCM.length > MAX_RING_DYN) ringPCM.shift();
+  if (isCapturing) {
+    capturePCM.push(c);
+    // Sécurité : si enregistrement trop long, on arrête automatiquement
+    if (capturePCM.length > MAX_CAP_CHUNKS) {
+      log('Limite 30 min atteinte — finalisation automatique');
+      setTimeout(finalize, 0); // sortir du contexte audio
+    }
+  }
+  const rL = rms(c.L), rR = rms(c.R);
+  if (rL > peakL) peakL = rL; if (rR > peakR) peakR = rR;
+};
+
+// ── startStream ───────────────────────────────────────────────────────────────
+async function startStream() {
+  if (!lameReady || !currentStream) return;
+  setStatus('buffering', 'Connexion au stream...');
+  log('Connexion à ' + currentStream.url);
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 2048;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    monitorGain = audioCtx.createGain(); monitorGain.gain.value = 1.0;
+
+    if (IS_IOS_SA) {
+      // iOS standalone : fetch+decode → ScriptProcessor
+      const sp = audioCtx.createScriptProcessor(BUFFER_SIZE, CHANNELS, CHANNELS);
+      sp.connect(audioCtx.destination); scriptProcessor = sp;
+      sp.onaudioprocess = (e) => {
+        const Ld = e.inputBuffer.getChannelData(0), Rd = e.inputBuffer.getChannelData(1);
+        const oL = e.outputBuffer.getChannelData(0), oR = e.outputBuffer.getChannelData(1);
+        const g = isMuted ? 0 : 1.0;
+        for (let i = 0; i < Ld.length; i++) { oL[i] = Ld[i] * g; oR[i] = Rd[i] * g; }
+        onChunk(Ld, Rd);
+      };
+      streamAbort = new AbortController();
+      fetchAndStream(currentStream.url, audioCtx, sp, streamAbort.signal)
+        .catch(err => { if (err.name !== 'AbortError') { setStatus('error', err.message); log('Erreur: ' + err.message); } });
+      log('iOS standalone — fetch stream');
+    } else {
+      // Standard : MediaElementSource + AudioWorklet (fallback ScriptProcessor)
+      audioEl = new Audio();
+      audioEl.crossOrigin = 'anonymous';
+      audioEl.src = currentStream.url;
+      audioEl.volume = 0.6;
+      audioEl.playsInline = true;
+
+      srcNode = audioCtx.createMediaElementSource(audioEl);
+      srcNode.connect(analyser);
+      analyser.connect(monitorGain);
+      monitorGain.connect(audioCtx.destination);
+
+      if (audioCtx.audioWorklet) {
+        const wb = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+        const wu = URL.createObjectURL(wb);
+        await audioCtx.audioWorklet.addModule(wu); URL.revokeObjectURL(wu);
+        const wn = new AudioWorkletNode(audioCtx, 'pcm-capture', { numberOfInputs: 1, numberOfOutputs: 0, channelCount: CHANNELS });
+        srcNode.connect(wn);
+        wn.port.onmessage = (e) => onChunk(e.data.L, e.data.R);
+        scriptProcessor = wn;
+        log('AudioWorklet');
+      } else {
+        const sp = audioCtx.createScriptProcessor(BUFFER_SIZE, CHANNELS, CHANNELS);
+        const sg = audioCtx.createGain(); sg.gain.value = 0;
+        srcNode.connect(sp); sp.connect(sg); sg.connect(audioCtx.destination);
+        sp.onaudioprocess = (e) => onChunk(
+          new Float32Array(e.inputBuffer.getChannelData(0)),
+          new Float32Array(e.inputBuffer.getChannelData(1))
+        );
+        scriptProcessor = sp;
+        log('ScriptProcessor (fallback)');
+      }
+
+      await new Promise((res, rej) => { audioEl.oncanplay = res; audioEl.onerror = rej; audioEl.load(); });
+      await audioEl.play();
+    }
+
+    isBuffering = true;
+    if (!isCapturing) setCapButtons(true, false);
+    showStreamControls(true);
+    startVU();
+    document.getElementById('corsNotice').style.display = 'none';
+    setStatus('buffering', 'Stream actif — accumulation du pré-roll...');
+
+    prerollSec = 0;
+    const pre = document.getElementById('prerollDisplay');
+    pre.textContent = '00:00';
+    pre.className = 'timer-val active';
+
+    prerollInterval = setInterval(() => {
+      prerollSec = Math.min(prerollSec + 1, PRE_ROLL);
+      document.getElementById('prerollDisplay').textContent = fmt(prerollSec);
+      if (!isCapturing) document.getElementById('progressBar').style.width = (prerollSec / PRE_ROLL * 100) + '%';
+      if (prerollSec >= PRE_ROLL) {
+        setStatus('ready', 'Pré-roll prêt (' + PRE_ROLL + 's) — prêt à capturer');
+        // Ne pas toucher aux boutons si un enregistrement est en cours
+        if (!isCapturing) setCapButtons(true, false);
+        document.getElementById('prerollDisplay').className = 'timer-val rec';
+        // Une fois le preroll atteint, arrêter le setInterval (inutile de continuer)
+        clearInterval(prerollInterval); prerollInterval = null;
+      }
+    }, 1000);
+
+  } catch(e) {
+    setStatus('error', 'Erreur de connexion');
+    log('Erreur: ' + e.message);
+    document.getElementById('corsNotice').style.display = 'block';
+    console.error(e);
+  }
+}
+
+// ── Capture ──────────────────────────────────────────────────────────────────
+function triggerCapture() {
+  if (isCapturing) return;
+  captureSnapshot = ringPCM.map(ch => ({ L: new Float32Array(ch.L), R: new Float32Array(ch.R) }));
+  snapshotSec = Math.round(captureSnapshot.length * BUFFER_SIZE / SAMPLE_RATE);
+  capturePCM = []; isCapturing = true;
+  setCapButtons(false, true);
+  const rl = document.getElementById('recLed'); if (rl) rl.classList.add('active');
+  const pt = postTarget;
+  setStatus('recording', pt === 0 ? 'Enregistrement en cours...' : 'Enregistrement — ' + pt + 's');
+  recSec = 0;
+  const rec = document.getElementById('recDisplay');
+  rec.textContent = fmt(0); rec.className = 'timer-val rec';
+  recInterval = setInterval(() => {
+    recSec++;
+    document.getElementById('recDisplay').textContent = fmt(recSec);
+    // Auto-stop à 10min dans tous les cas
+    if (recSec >= MAX_AUTO_STOP) { clearInterval(recInterval); finalize(); return; }
+    if (pt > 0) {
+      const rem = pt - recSec;
+      document.getElementById('progressBar').style.width = Math.min(recSec / pt * 100, 100) + '%';
+      if (rem > 0) setStatus('recording', 'Enregistrement — ' + rem + 's restantes');
+      if (recSec >= pt) { clearInterval(recInterval); finalize(); }
+    } else {
+      setStatus('recording', 'Enregistrement — ' + fmt(recSec) + ' (stop manuel)');
+    }
+  }, 1000);
+}
+
+function stopCapture() { if (!isCapturing) return; clearInterval(recInterval); finalize(); }
+
+// ── Encodage MP3 ──────────────────────────────────────────────────────────────
+function encodeMp3(chunks) {
+  const enc = new lamejs.Mp3Encoder(CHANNELS, SAMPLE_RATE, BITRATE); const data = [];
+  for (const ch of chunks) { const e = enc.encodeBuffer(f32ToI16(ch.L), f32ToI16(ch.R)); if (e.length > 0) data.push(new Uint8Array(e)); }
+  const f = enc.flush(); if (f.length > 0) data.push(new Uint8Array(f));
+  return new Blob(data, { type: 'audio/mpeg' });
+}
+
+function finalize() {
+  isCapturing = false;
+  if (recInterval) { clearInterval(recInterval); recInterval = null; }
+  setCapButtons(false, false);
+  setStatus('done', 'Encodage MP3...');
+  const rl = document.getElementById('recLed'); if (rl) rl.classList.remove('active');
+  // Reset affichage durée enregistrement
+  const rec = document.getElementById('recDisplay');
+  if (rec) { rec.textContent = '—:——'; rec.className = 'timer-val'; }
+
+  // Copier les données avant de vider (onChunk peut encore tourner)
+  const allChunks = [...captureSnapshot, ...capturePCM];
+  const snapSec = snapshotSec;
+  const rSec = recSec;
+  captureSnapshot = []; capturePCM = [];
+
+  setTimeout(() => {
+    try {
+      const blob = encodeMp3(allChunks);
+      const prefix = currentStream ? currentStream.prefix : 'capture';
+      const ds = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const filename = prefix + '_' + ds + '.mp3';
+      const sizekb = (blob.size / 1024).toFixed(0);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      // Révoquer l'URL blob après 60s (libère la mémoire tout en laissant le temps au DL)
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const total = fmt(snapSec + rSec);
+      const list = document.getElementById('filesList');
+      // Garder max 10 items dans la liste
+      while (list.children.length >= 10) list.removeChild(list.lastChild);
+      const item = document.createElement('div'); item.className = 'file-item';
+      // Stocker le blob sur l'élément pour l'éditeur
+      const blobRef = blob;
+      const fnRef   = filename;
+      item.innerHTML = '<div style="cursor:pointer;flex:1" title="Ouvrir dans l&#39;éditeur"><div class="file-name">▶ '+filename+'</div><div class="file-meta">'+sizekb+' KB · '+total+' · MP3 44.1kHz 192kbps</div></div><a class="file-dl" href="'+url+'" download="'+filename+'" onclick="event.stopPropagation()">↓ DL</a>';
+      item.querySelector('div[style]').addEventListener('click', () => edOpen(blobRef, fnRef));
+      list.insertBefore(item, list.firstChild);
+      setStatus('done', 'Clip prêt — '+(blob.size/1024/1024).toFixed(1)+' MB');
+      log('Enregistré — '+filename+' ('+sizekb+' KB · '+total+')');
+      document.getElementById('progressBar').style.width = '100%';
+      // Ouvrir automatiquement dans l'éditeur
+      edOpen(blobRef, fnRef);
+    } catch(err) {
+      setStatus('error', 'Erreur encodage: '+err.message);
+      log('Erreur: '+err.message);
+    } finally {
+      // Réactiver Capturer seulement si le stream est toujours actif
+      if (isBuffering) setCapButtons(true, false);
+    }
+  }, 50);
+}
+
+// ── Mute ──────────────────────────────────────────────────────────────────────
+function toggleMute() {
+  if (!isBuffering) return;
+  isMuted = !isMuted;
+  if (monitorGain) monitorGain.gain.value = isMuted ? 0 : 1.0;
+  const btn = document.getElementById('btnMuteConsole');
+  if (btn) isMuted ? btn.classList.add('muted') : btn.classList.remove('muted');
+}
+
+// ── Teardown ──────────────────────────────────────────────────────────────────
+function teardown() {
+  // Retirer l'état actif des pads antenne
+  document.getElementById('btnOneFM').classList.remove('pad-on');
+  document.getElementById('btnLac').classList.remove('pad-on');
+  currentStream = null;
+  const rl = document.getElementById('recLed'); if (rl) rl.classList.remove('active');
+  try { if (streamAbort)     { streamAbort.abort();        streamAbort = null;    } } catch(e) {}
+  try { if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; } } catch(e) {}
+  try { if (srcNode)         { srcNode.disconnect();        srcNode = null;        } } catch(e) {}
+  try { if (audioEl)         { audioEl.pause(); audioEl.src = ''; audioEl = null; } } catch(e) {}
+  try { if (audioCtx)        { audioCtx.close();            audioCtx = null;       } } catch(e) {}
+  try { if (prerollInterval) { clearInterval(prerollInterval); prerollInterval = null; } } catch(e) {}
+  stopVU();
+  isBuffering = false; isMuted = false;  isCapturing = false;
+  ringPCM = []; capturePCM = []; captureSnapshot = [];
+  setCapButtons(false, false);
+  showStreamControls(false);
+  cancelSwitch();
+  document.getElementById('progressBar').style.width = '0%';
+  const pre = document.getElementById('prerollDisplay');
+  pre.textContent = '00:00'; pre.className = 'timer-val';
+  const rec = document.getElementById('recDisplay');
+  rec.textContent = '—:——'; rec.className = 'timer-val';
+  const bm = document.getElementById('btnMuteConsole');
+  if (bm) bm.classList.remove('muted');
+  setStatus('', 'Arrêté');
+  log('Stream déconnecté');
+}
+
+function doStop() {
+  if (isCapturing) {
+    document.getElementById('stopDialog').classList.add('open');
+  } else {
+    teardown();
+  }
+}
+
+function dialogAction(action) {
+  document.getElementById('stopDialog').classList.remove('open');
+  if (action === 'cancel') return;
+  if (action === 'save') {
+    // Finaliser + télécharger, puis arrêter le stream
+    finalize();
+    setTimeout(teardown, 300);
+  } else if (action === 'discard') {
+    // Arrêter sans enregistrer
+    isCapturing = false;
+    if (recInterval) { clearInterval(recInterval); recInterval = null; }
+    teardown();
+  }
+}
+
+// ── Résume AudioContext si suspendu (iOS background/screen lock) ─────────────
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+  }
+});
+
+// Sur iOS, un tap sur la page suffit à résumer
+document.addEventListener('touchstart', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+}, { passive: true });
+
+// ── Raccourci Ctrl+Space ──────────────────────────────────────────────────────
+// ── Watchdog audio (toutes les 30s) ─────────────────────────────────────────
+setInterval(() => {
+  if (!isBuffering || !audioCtx) return;
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
+    log('AudioContext résumé (watchdog)');
+  }
+}, 30000);
+
+document.addEventListener('keydown', (e) => {
+  // Ctrl+Space → capture stream
+  if (e.code === 'Space' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    if (!isBuffering) return;
+    if (!isCapturing) triggerCapture(); else stopCapture();
+    return;
+  }
+
+  // Raccourcis éditeur — ignorés si focus dans un input/select
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  // Enter/Escape dans le dialog de renommage
+  if (document.getElementById('renameDialog').classList.contains('open')) {
+    if (e.key === 'Enter')  { e.preventDefault(); renameConfirm(); }
+    if (e.key === 'Escape') { e.preventDefault(); renameCancel();  }
+    return;
+  }
+
+  switch (e.key.toUpperCase()) {
+    case 'D': e.preventDefault(); if (ED.buffer) edRewind();    break;
+    case ' ': e.preventDefault(); if (ED.buffer) edPlayStop();  break;
+    case 'I': e.preventDefault(); if (ED.buffer) edSetStart();  break;
+    case 'O': e.preventDefault(); if (ED.buffer) edSetEnd();    break;
+    case 'T': e.preventDefault();
+      if (ED.buffer) {
+        // Si sélection IN/OUT, zoomer dessus; sinon zoom simple
+        if (ED.inPoint !== null && ED.outPoint !== null) {
+          const i1 = Math.min(ED.inPoint, ED.outPoint);
+          const i2 = Math.max(ED.inPoint, ED.outPoint);
+          const dur = i2 - i1;
+          if (dur > 0) {
+            ED.zoom = Math.min(20, ED.duration / dur);
+            ED.scrollOff = Math.max(0, i1 - dur * 0.05);
+            edUpdateZoomUI(); edDrawWave(); edDrawTimecode(); edUpdateScrollbar();
+            break;
+          }
+        }
+        edZoom(ED.zoom * 1.5);
+      }
+      break;
+    case 'R': e.preventDefault(); if (ED.buffer) edZoom(ED.zoom / 1.5); break;
+    case 'X': e.preventDefault(); if (ED.buffer) edClearRegion(); break;
+    case 'E': e.preventDefault(); if (ED.buffer && ED.inPoint !== null && ED.outPoint !== null) edExport(); break;
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ÉDITEUR AUDIO
+// ═══════════════════════════════════════════════════════════════════════════
+const ED = {
+  audioCtx:  null,    // AudioContext dédié à la lecture
+  buffer:    null,    // AudioBuffer du fichier chargé
+  source:    null,    // BufferSourceNode en cours de lecture
+  blob:      null,    // Blob MP3 original
+  filename:  '',
+  duration:  0,
+  // Playback
+  playing:   false,
+  startTime: 0,       // audioCtx.currentTime au moment du play
+  startOff:  0,       // offset dans le buffer au moment du play
+  curPos:    0,       // position courante (s)
+  // Région
+  inPoint:   null,
+  outPoint:  null,
+  // Zoom
+  zoom:      1,       // 1 = tout visible, max 20
+  scrollOff: 0,       // offset en secondes (début de la vue)
+  // RAF
+  rafId:     null,
+  // Waveform data
+  peaks:     null,    // Float32Array des peaks (une valeur par pixel logique)
+};
+
+function fmtMs(s) {
+  const m = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(1).padStart(4, '0');
+  return String(m).padStart(2,'0') + ':' + sec;
+}
+
+// ── Ouvrir un fichier dans l'éditeur ─────────────────────────────────────────
+async function edOpen(blob, filename) {
+  ED.blob = blob;
+  ED.filename = filename;
+  ED.inPoint = null; ED.outPoint = null;
+  ED.curPos = 0; ED.startOff = 0; ED.zoom = 1; ED.scrollOff = 0;
+
+  document.getElementById('audioEditor').classList.add('visible');
+  document.getElementById('editorFilename').textContent = filename;
+  document.getElementById('waveMarkerStart').style.display = 'none';
+  document.getElementById('waveMarkerEnd').style.display   = 'none';
+  document.getElementById('waveRegion').style.display      = 'none';
+  document.getElementById('trExport').disabled = true;
+  document.getElementById('trRegionTime').textContent = '';
+
+  // Décoder l'audio
+  if (!ED.audioCtx) ED.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ED.audioCtx.state === 'suspended') await ED.audioCtx.resume();
+
+  try {
+    const arrayBuf = await blob.arrayBuffer();
+    ED.buffer = await ED.audioCtx.decodeAudioData(arrayBuf);
+    ED.duration = ED.buffer.duration;
+    edBuildPeaks();
+    edDrawWave();
+    edDrawTimecode();
+    edUpdateZoomUI();
+    edUpdateCursor();
+    edUpdateScrollbar();
+    document.getElementById('trTime').textContent = fmtMs(0);
+  } catch(e) {
+    log('Éditeur: erreur décodage — ' + e.message);
+  }
+}
+
+// ── Calcul des peaks ─────────────────────────────────────────────────────────
+function edBuildPeaks() {
+  const canvas = document.getElementById('waveEditor');
+  const W = canvas.offsetWidth || 400;
+  const data = ED.buffer.getChannelData(0);
+  const step = Math.ceil(data.length / W);
+  ED.peaks = new Float32Array(W);
+  for (let i = 0; i < W; i++) {
+    let max = 0;
+    for (let j = i * step; j < Math.min((i+1)*step, data.length); j++) {
+      const v = Math.abs(data[j]);
+      if (v > max) max = v;
+    }
+    ED.peaks[i] = max;
+  }
+}
+
+// ── Dessin waveform ───────────────────────────────────────────────────────────
+function edDrawWave() {
+  const canvas = document.getElementById('waveEditor');
+  canvas.width  = canvas.offsetWidth  || 400;
+  canvas.height = canvas.offsetHeight || 80;
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+
+  if (!ED.peaks) return;
+
+  // Portion visible
+  const viewDur  = ED.duration / ED.zoom;
+  const viewSec  = Math.min(ED.scrollOff + viewDur, ED.duration);
+  const startFrac = ED.scrollOff / ED.duration;
+  const endFrac   = viewSec / ED.duration;
+
+  const startPeak = Math.floor(startFrac * ED.peaks.length);
+  const endPeak   = Math.ceil(endFrac   * ED.peaks.length);
+  const nPeaks    = endPeak - startPeak;
+
+  // Fond
+  ctx.fillStyle = '#090a0d';
+  ctx.fillRect(0, 0, W, H);
+
+  // Ligne centrale
+  ctx.strokeStyle = '#1a1c22';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+
+  // Waveform
+  const isMutedStream = isMuted;
+  ctx.fillStyle = (ED.playing && !isMutedStream) ? '#00b896' : '#3a5060';
+  const px = W / nPeaks;
+  for (let i = 0; i < nPeaks; i++) {
+    const peak = ED.peaks[startPeak + i] || 0;
+    const h = Math.max(2, peak * H * 0.9);
+    ctx.fillRect(i * px, (H - h) / 2, Math.max(1, px - 0.5), h);
+  }
+
+  // Région IN/OUT
+  if (ED.inPoint !== null && ED.outPoint !== null) {
+    const i1 = Math.min(ED.inPoint, ED.outPoint);
+    const i2 = Math.max(ED.inPoint, ED.outPoint);
+    const x1 = edSecToX(i1, W);
+    const x2 = edSecToX(i2, W);
+    ctx.fillStyle = 'rgba(0,184,150,0.1)';
+    ctx.fillRect(x1, 0, x2-x1, H);
+    ctx.strokeStyle = '#00b896'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x1,0); ctx.lineTo(x1,H); ctx.stroke();
+    ctx.strokeStyle = '#dc0814';
+    ctx.beginPath(); ctx.moveTo(x2,0); ctx.lineTo(x2,H); ctx.stroke();
+    // Labels
+    ctx.font = '9px IBM Plex Mono,monospace';
+    ctx.fillStyle = '#00b896'; ctx.fillText('IN', x1+3, 12);
+    ctx.fillStyle = '#dc0814'; ctx.textAlign = 'right'; ctx.fillText('OUT', x2-3, 12);
+    ctx.textAlign = 'left';
+  } else if (ED.inPoint !== null) {
+    const x = edSecToX(ED.inPoint, W);
+    ctx.strokeStyle = '#00b896'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    ctx.font = '9px IBM Plex Mono,monospace';
+    ctx.fillStyle = '#00b896'; ctx.fillText('IN', x+3, 12);
+  }
+
+  // Curseur de lecture
+  const cx = edSecToX(ED.curPos, W);
+  ctx.strokeStyle = '#f5a000'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+}
+
+function edSecToX(sec, W) {
+  const viewDur = ED.duration / ED.zoom;
+  return Math.round(((sec - ED.scrollOff) / viewDur) * W);
+}
+
+function edXToSec(x, W) {
+  const viewDur = ED.duration / ED.zoom;
+  return ED.scrollOff + (x / W) * viewDur;
+}
+
+// ── Timecode ruler ────────────────────────────────────────────────────────────
+function edDrawTimecode() {
+  const canvas = document.getElementById('waveTimecode');
+  canvas.width  = canvas.offsetWidth || 400;
+  canvas.height = 14;
+  const W = canvas.width;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, 14);
+  ctx.fillStyle = '#0a0b0e';
+  ctx.fillRect(0, 0, W, 14);
+
+  const viewDur = ED.duration / ED.zoom;
+  // Intervalle de tick selon le zoom
+  const intervals = [0.5, 1, 2, 5, 10, 30, 60];
+  const minPx = 50;
+  let tick = intervals.find(i => (i / viewDur) * W >= minPx) || 60;
+
+  const start = Math.ceil(ED.scrollOff / tick) * tick;
+  ctx.font = '7px IBM Plex Mono,monospace';
+  ctx.fillStyle = '#505668';
+  ctx.strokeStyle = '#1a1c22';
+
+  for (let t = start; t <= ED.scrollOff + viewDur; t += tick) {
+    const x = edSecToX(t, W);
+    ctx.beginPath(); ctx.moveTo(x, 8); ctx.lineTo(x, 14); ctx.stroke();
+    const label = fmtMs(t);
+    ctx.fillText(label, x + 2, 10);
+  }
+}
+
+// ── Scrollbar ─────────────────────────────────────────────────────────────────
+function edUpdateScrollbar() {
+  const bar   = document.getElementById('waveScrollbar');
+  const thumb = document.getElementById('waveScrollThumb');
+  const W     = bar.offsetWidth || 400;
+  const thumbW = Math.max(20, W / ED.zoom);
+  const maxOff = ED.duration - ED.duration / ED.zoom;
+  const pos    = maxOff > 0 ? (ED.scrollOff / maxOff) * (W - thumbW) : 0;
+  thumb.style.width = thumbW + 'px';
+  thumb.style.left  = pos + 'px';
+}
+
+// ── Zoom UI ────────────────────────────────────────────────────────────────────
+function edUpdateZoomUI() {
+  const pct = ((ED.zoom - 1) / 19) * 100;
+  document.getElementById('waveZoomFill').style.width = pct + '%';
+  document.getElementById('waveZoomVal').textContent  = ED.zoom.toFixed(1) + '×';
+}
+
+// ── Curseur et temps ──────────────────────────────────────────────────────────
+function edUpdateCursor() {
+  document.getElementById('trTime').textContent = fmtMs(ED.curPos);
+  edDrawWave();
+  edDrawTimecode();
+  edUpdateScrollbar();
+}
+
+// ── Play / Stop ───────────────────────────────────────────────────────────────
+function edPlayStop() {
+  if (!ED.buffer) return;
+  if (ED.playing) { edStop(); return; }
+
+  if (ED.audioCtx.state === 'suspended') ED.audioCtx.resume();
+  ED.source = ED.audioCtx.createBufferSource();
+  ED.source.buffer = ED.buffer;
+  ED.source.connect(ED.audioCtx.destination);
+
+  // Mémoriser la position de départ pour y revenir au Stop
+  const startPos = ED.curPos >= (ED.outPoint || ED.duration) ? (ED.inPoint || 0) : ED.curPos;
+  ED.playOrigin   = startPos;
+  ED.userScrolled = false; // reset scroll lock au play
+  ED.startOff   = startPos;
+  ED.startTime  = ED.audioCtx.currentTime;
+  ED.source.start(0, startPos);
+  ED.playing = true;
+  autoDim(true); // auto-dim si stream actif
+
+  const btn = document.getElementById('trPlay');
+  btn.textContent = '⏸'; btn.classList.add('active');
+
+  ED.source.onended = () => { if (ED.playing) edStop(); };
+
+  // Auto-stop à OUT
+  if (ED.outPoint !== null && startPos < ED.outPoint) {
+    const dur = ED.outPoint - startPos;
+    ED.source.stop(ED.audioCtx.currentTime + dur);
+  }
+
+  function tick() {
+    if (!ED.playing) return;
+    ED.curPos = Math.min(ED.startOff + (ED.audioCtx.currentTime - ED.startTime), ED.duration);
+    const viewDur = ED.duration / ED.zoom;
+    if (ED.curPos > ED.scrollOff + viewDur * 0.9) {
+      ED.scrollOff = Math.min(ED.curPos - viewDur * 0.1, ED.duration - viewDur);
+    }
+    edUpdateCursor();
+    ED.rafId = requestAnimationFrame(tick);
+  }
+  ED.rafId = requestAnimationFrame(tick);
+}
+
+function edStop() {
+  ED.playing = false;
+  if (ED.source) { try { ED.source.stop(); } catch(e) {} ED.source = null; }
+  if (ED.rafId)  { cancelAnimationFrame(ED.rafId); ED.rafId = null; }
+  // Retour au point de départ de la lecture
+  if (ED.playOrigin !== undefined) {
+    ED.curPos    = ED.playOrigin;
+    ED.scrollOff = Math.max(0, Math.min(ED.playOrigin - (ED.duration / ED.zoom) / 2,
+                             ED.duration - ED.duration / ED.zoom));
+    ED.playOrigin = undefined;
+  }
+  autoDim(false); // retire dim quand lecture arrêtée
+  const btn = document.getElementById('trPlay');
+  btn.textContent = '▶'; btn.classList.remove('active');
+  edUpdateCursor();
+}
+
+function edRewind() {
+  const wasPlaying = ED.playing;
+  if (ED.playing) edStop();
+  ED.curPos    = ED.inPoint || 0;
+  ED.scrollOff = 0;
+  edUpdateCursor();
+  if (wasPlaying) edPlayStop();
+}
+
+// ── Set IN / OUT ──────────────────────────────────────────────────────────────
+function edSetStart() {
+  if (!ED.buffer) return;
+  ED.inPoint = ED.curPos;
+  if (ED.outPoint !== null && ED.inPoint >= ED.outPoint) ED.outPoint = null;
+  edUpdateRegion();
+  edDrawWave();
+}
+
+function edSetEnd() {
+  if (!ED.buffer) return;
+  ED.outPoint = ED.curPos;
+  if (ED.inPoint !== null && ED.outPoint <= ED.inPoint) ED.inPoint = null;
+  edUpdateRegion();
+  edDrawWave();
+}
+
+function edUpdateRegion() {
+  const hasRegion = ED.inPoint !== null && ED.outPoint !== null;
+  document.getElementById('trExport').disabled = !hasRegion;
+  if (hasRegion) {
+    const dur = Math.abs(ED.outPoint - ED.inPoint);
+    document.getElementById('trRegionTime').textContent = fmtMs(dur);
+  } else {
+    document.getElementById('trRegionTime').textContent = '';
+  }
+}
+
+// ── Export sélection ──────────────────────────────────────────────────────────
+async function edExport() {
+  if (ED.inPoint === null || ED.outPoint === null) return;
+  // Proposer un nom par défaut et ouvrir le dialog de renommage
+  const base = ED.filename.replace(/\.mp3$/i, '');
+  const ds   = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  document.getElementById('renameInput').value = base + '_edit_' + ds;
+  document.getElementById('renameDialog').classList.add('open');
+  setTimeout(() => {
+    const inp = document.getElementById('renameInput');
+    inp.focus(); inp.select();
+  }, 80);
+}
+
+function renameCancel() {
+  document.getElementById('renameDialog').classList.remove('open');
+}
+
+function renameConfirm() {
+  const rawName = document.getElementById('renameInput').value.trim();
+  if (!rawName) return;
+  const fname = rawName.replace(/\.mp3$/i, '') + '.mp3';
+  document.getElementById('renameDialog').classList.remove('open');
+  edDoExport(fname);
+}
+
+function edDoExport(fname) {
+  if (ED.inPoint === null || ED.outPoint === null) return;
+  const i1 = Math.min(ED.inPoint, ED.outPoint);
+  const i2 = Math.max(ED.inPoint, ED.outPoint);
+  const sr  = ED.buffer.sampleRate;
+  const ch  = ED.buffer.numberOfChannels;
+  const s1  = Math.floor(i1 * sr);
+  const s2  = Math.floor(i2 * sr);
+  const len = s2 - s1;
+
+  const tmpBuf = ED.audioCtx.createBuffer(ch, len, sr);
+  for (let c2 = 0; c2 < ch; c2++) {
+    const src = ED.buffer.getChannelData(c2).subarray(s1, s2);
+    tmpBuf.copyToChannel(src, c2);
+  }
+
+  setStatus('done', 'Export MP3...');
+  setTimeout(() => {
+    try {
+      const L = tmpBuf.getChannelData(0);
+      const R = ch > 1 ? tmpBuf.getChannelData(1) : L;
+      const enc = new lamejs.Mp3Encoder(2, sr, BITRATE);
+      const data = [];
+      const CHUNK = 1152;
+      for (let i = 0; i < L.length; i += CHUNK) {
+        const e = enc.encodeBuffer(f32ToI16(L.subarray(i, i+CHUNK)), f32ToI16(R.subarray(i, i+CHUNK)));
+        if (e.length > 0) data.push(new Uint8Array(e));
+      }
+      const fl = enc.flush(); if (fl.length > 0) data.push(new Uint8Array(fl));
+      const blob = new Blob(data, { type: 'audio/mpeg' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setStatus('done', 'Export — ' + (blob.size/1024).toFixed(0) + ' KB');
+      log('Export → ' + fname);
+    } catch(e) {
+      setStatus('error', 'Erreur export: ' + e.message);
+    }
+  }, 20);
+}
+
+// ── Événements éditeur ───────────────────────────────────────────────────────
+(function initEditorEvents() {
+  const container = document.getElementById('waveContainer');
+  const zoomTrack = document.getElementById('waveZoomTrack');
+  const thumb     = document.getElementById('waveScrollThumb');
+
+  // ── Drag-select (clic+drag pour sélection IN/OUT) ──────────────────────────
+  let dragStart = null, isDragging = false;
+
+  container.addEventListener('mousedown', (e) => {
+    if (!ED.buffer || e.button !== 0) return;
+    const rect = container.getBoundingClientRect();
+    dragStart = edXToSec(e.clientX - rect.left, rect.width);
+    dragStart = Math.max(0, Math.min(dragStart, ED.duration));
+    isDragging = false;
+
+    const onMove = (ev) => {
+      const x   = ev.clientX - rect.left;
+      const sec = Math.max(0, Math.min(edXToSec(x, rect.width), ED.duration));
+      const d   = Math.abs(sec - dragStart);
+      if (d > 0.05) { // seuil pour différencier click et drag
+        isDragging = true;
+        ED.inPoint  = Math.min(dragStart, sec);
+        ED.outPoint = Math.max(dragStart, sec);
+        ED.curPos   = sec;
+        edUpdateRegion(); edDrawWave();
+      }
+    };
+
+    const onUp = (ev) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (!isDragging) {
+        // Simple click → déplacer curseur (pas de modif IN/OUT)
+        const x   = ev.clientX - rect.left;
+        const sec = Math.max(0, Math.min(edXToSec(x, rect.width), ED.duration));
+        ED.curPos  = sec;
+        if (ED.playing) {
+          const wasPlay = ED.playing;
+          edStop();
+          ED.curPos = sec;
+          edPlayStop();
+        } else {
+          edUpdateCursor();
+        }
+      }
+      isDragging = false;
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // ── Double-clic → play depuis cet endroit ─────────────────────────────────
+  container.addEventListener('dblclick', (e) => {
+    if (!ED.buffer) return;
+    const rect = container.getBoundingClientRect();
+    const sec  = Math.max(0, Math.min(edXToSec(e.clientX - rect.left, rect.width), ED.duration));
+    const wasPlaying = ED.playing;
+    if (ED.playing) edStop();
+    ED.curPos = sec;
+    edPlayStop();
+  });
+
+  // ── Tap smartphone → déplacer curseur ────────────────────────────────────
+  let touchStartX = null, touchStartTime = null, lastTap = 0;
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartTime = Date.now();
+    }
+  }, { passive: true });
+
+  container.addEventListener('touchend', (e) => {
+    if (!ED.buffer) return;
+    if (e.changedTouches.length !== 1) return;
+    const dx       = Math.abs(e.changedTouches[0].clientX - touchStartX);
+    const duration = Date.now() - touchStartTime;
+    const now      = Date.now();
+
+    if (dx < 10 && duration < 300) {
+      if (now - lastTap < 350) {
+        // Double-tap → play depuis ici
+        const rect = container.getBoundingClientRect();
+        const sec  = Math.max(0, Math.min(edXToSec(e.changedTouches[0].clientX - rect.left, rect.width), ED.duration));
+        if (ED.playing) edStop();
+        ED.curPos = sec;
+        edPlayStop();
+      } else {
+        // Simple tap → déplacer curseur
+        const rect = container.getBoundingClientRect();
+        const sec  = Math.max(0, Math.min(edXToSec(e.changedTouches[0].clientX - rect.left, rect.width), ED.duration));
+        ED.curPos  = sec;
+        edUpdateCursor();
+      }
+      lastTap = now;
+    }
+  }, { passive: true });
+
+  // ── Wheel zoom (desktop) ──────────────────────────────────────────────────
+  container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    edZoom(ED.zoom * (e.deltaY < 0 ? 1.15 : 0.87));
+  }, { passive: false });
+
+  // ── Barre de zoom (slider) ────────────────────────────────────────────────
+  function setZoomFromTrack(e) {
+    const rect = document.getElementById('waveZoomTrack').getBoundingClientRect();
+    const x    = Math.max(0, Math.min((e.clientX - rect.left) / rect.width, 1));
+    edZoom(1 + x * 19);
+  }
+  document.getElementById('waveZoomTrack').addEventListener('click', setZoomFromTrack);
+  document.getElementById('waveZoomTrack').addEventListener('mousedown', (e) => {
+    setZoomFromTrack(e);
+    const mv = (ev) => setZoomFromTrack(ev);
+    const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', mv);
+    document.addEventListener('mouseup', up);
+  });
+
+  // ── Scrollbar thumb drag ──────────────────────────────────────────────────
+  let scrollDragX = null, scrollDragOff = null;
+  thumb.addEventListener('mousedown', (e) => {
+    scrollDragX   = e.clientX;
+    scrollDragOff = ED.scrollOff;
+    e.preventDefault();
+    const move = (ev) => {
+      if (!ED.buffer) return;
+      const bar    = document.getElementById('waveScrollbar');
+      const W      = bar.offsetWidth;
+      const thumbW = Math.max(20, W / ED.zoom);
+      const maxOff = ED.duration - ED.duration / ED.zoom;
+      const dx     = ev.clientX - scrollDragX;
+      const ratio  = dx / (W - thumbW);
+      ED.scrollOff = Math.max(0, Math.min(scrollDragOff + ratio * maxOff, maxOff));
+      edDrawWave(); edDrawTimecode(); edUpdateScrollbar();
+      ED.userScrolled = true; // l'utilisateur a scrollé manuellement
+    };
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+
+  // Resize
+  window.addEventListener('resize', () => {
+    if (!ED.buffer) return;
+    edBuildPeaks(); edDrawWave(); edDrawTimecode(); edUpdateScrollbar();
+  });
+})();
+
+function edZoom(z) {
+  const prev = ED.zoom;
+  ED.zoom = Math.max(1, Math.min(20, z));
+  // Recentrer sur la position de lecture
+  const viewDur = ED.duration / ED.zoom;
+  ED.scrollOff = Math.max(0, Math.min(ED.curPos - viewDur / 2, ED.duration - viewDur));
+  edUpdateZoomUI();
+  edDrawWave(); edDrawTimecode(); edUpdateScrollbar();
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DIM -15dB
+// ══════════════════════════════════════════════════════════════════════════════
+let isDimmed = false;
+let dimGainNode = null;
+
+function initDimNode() {
+  if (!audioCtx) return;
+  if (!dimGainNode) {
+    dimGainNode = audioCtx.createGain();
+    dimGainNode.gain.value = 1.0;
+    // Reconnecter monitorGain → dimGainNode → destination
+    if (monitorGain) {
+      monitorGain.disconnect();
+      monitorGain.connect(dimGainNode);
+      dimGainNode.connect(audioCtx.destination);
+    }
+  }
+}
+
+function applyDim() {
+  initDimNode();
+  const btn = document.getElementById('btnDim');
+  if (dimGainNode) dimGainNode.gain.value = isDimmed ? Math.pow(10, -15/20) : 1.0;
+  if (btn) isDimmed ? btn.classList.add('dimmed') : btn.classList.remove('dimmed');
+  // Les couleurs VU sont gérées dans paintVU — forcer un redraw
+  paintVU(peakL, peakR);
+}
+
+function toggleDim() {
+  isDimmed = !isDimmed;
+  applyDim();
+}
+
+// Auto-dim quand lecteur joue + stream actif non-muted
+function autoDim(play) {
+  if (isBuffering && !isMuted) {
+    isDimmed = play;
+    applyDim();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INFOBULLE RACCOURCIS
+// ══════════════════════════════════════════════════════════════════════════════
+function toggleShortcuts(e) {
+  e.stopPropagation();
+  const popup = document.getElementById('shortcutsPopup');
+  const btn   = document.getElementById('edInfoBtn');
+  if (!popup || !btn) return;
+  const rect  = btn.getBoundingClientRect();
+  popup.style.right = (window.innerWidth - rect.right) + 'px';
+  popup.style.top   = (rect.bottom + window.scrollY + 6) + 'px';
+  popup.classList.toggle('open');
+  const close = (ev) => {
+    if (!popup.contains(ev.target)) { popup.classList.remove('open'); document.removeEventListener('click', close); }
+  };
+  setTimeout(() => document.addEventListener('click', close), 80);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CLEAR IN/OUT
+// ══════════════════════════════════════════════════════════════════════════════
+function edClearRegion() {
+  ED.inPoint = null; ED.outPoint = null;
+  edUpdateRegion(); edDrawWave();
+}
+
+
+</script>
+</body>
+</html>
