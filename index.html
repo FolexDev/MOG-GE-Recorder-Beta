@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
   <title>MOG-GE Stream Recorder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
@@ -20,10 +20,38 @@
     body {
       background: #0c0d10;
       min-height: 100vh;
+      min-height: 100dvh; /* dynamic viewport height pour iOS */
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 1.5rem 1rem 3rem;
+      padding: 0.75rem 0.5rem 2rem;
+    }
+
+    /* Mobile : retirer padding et border-radius pour plein écran */
+    @media (max-width: 540px) {
+      body {
+        padding: 0;
+        background: #1a1c22;
+      }
+      .shell {
+        max-width: 100% !important;
+        width: 100% !important;
+        border-radius: 0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        box-shadow: none !important;
+      }
+      /* Potards plus grands sur mobile */
+      .knob-wrap { width: 100px !important; height: 100px !important; }
+      .knob-svg  { width: 100px !important; height: 100px !important; }
+      /* Transport de l'éditeur : wrap */
+      .transport { flex-wrap: wrap; }
+      /* Boutons pads antenne plus hauts */
+      .pad { height: 56px !important; font-size: 15px !important; }
+      /* Boutons action plus grands */
+      .btn { height: 50px !important; font-size: 13px !important; }
+      /* Timer fonts */
+      .timer-val { font-size: 24px !important; }
     }
 
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
